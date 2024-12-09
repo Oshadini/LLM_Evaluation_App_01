@@ -18,4 +18,5 @@ trulens
 openpyxl
 trulens.apps.langchain
 trulens.apps.llamaindex
+trulens-providers-openai>=1.0.0
 
