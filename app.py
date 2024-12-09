@@ -7,79 +7,39 @@ from typing import Optional, Dict, Tuple
 
 
 
-from trulens_eval.feedback import Feedback
-
-
 # Load Trulens's Feedback Class
-class CustomFeedback:
-    def __init__(self):
-        self.feedbacks = []
+class CustomFeedback(OpenAI):
+    """
+    A custom Trulens feedback function extending OpenAI's functionality for evaluation purposes.
+    """
+    def custom_metric_score(
+        self,
+        answer: Optional[str] = None,
+        question: Optional[str] = None,
+        context: Optional[str] = None
+    ) -> Tuple[float, Dict]:
+        """
+        Scoring logic based on relevance.
+        """
+        # Generate the scoring prompt using the context, question, and answer data
+        if answer and question and context:
+            user_prompt = f"Prompt: Evaluate the following in terms of relevance:\nAnswer: {answer}\nQuestion: {question}\nContext: {context}\n" + prompts.COT_REASONS_TEMPLATE
+        else:
+            user_prompt = "Prompt: Evaluate the provided data for relevance using a scoring system:\n" + prompts.COT_REASONS_TEMPLATE
 
-    def add_feedback(self, metric_name, prompt, combination):
-        self.feedbacks.append({"metric_name": metric_name, "prompt": prompt, "combination": combination})
+        system_prompt = prompts.CONTEXT_RELEVANCE_SYSTEM.replace(
+            "- STATEMENT that is RELEVANT to most of the QUESTION should get a score of 0 - 10.",
+            ""
+        )
 
-    def evaluate(self, data):
-        results = []
-        for feedback in self.feedbacks:
-            prompt = feedback["prompt"]
-            combination = feedback["combination"]
-
-            # Generate a custom prompt using the selected combination of inputs
-            input_text = "\n".join([f"{col}: {data[col]}" for col in combination if col in data])
-            full_prompt = f"""
-                {prompt}
-                
-                Given the input data below:
-                {input_text}
-
-                Please return a response in JSON format with the following structure:
-                {{
-                    "score": <numeric value or string>,
-                    "reason": <short explanation of the score>
-                }}
-            """
-
-            # Send the prompt to the model
-            try:
-                response = model.invoke(full_prompt)
-
-                # Safely parse response
-                if hasattr(response, 'content'):
-                    response_content = response.content
-                    try:
-                        # Parse as JSON
-                        parsed_result = json.loads(response_content)
-                        results.append({
-                            "metric": feedback["metric_name"],
-                            "score": parsed_result.get("score", "N/A"),
-                            "explanation": parsed_result.get("reason", "No explanation provided"),
-                        })
-                    except json.JSONDecodeError:
-                        # Handle plain-text response
-                        results.append({
-                            "metric": feedback["metric_name"],
-                            "score": "N/A",
-                            "explanation": f"Plain text response: {response_content}",
-                        })
-                else:
-                    results.append({
-                        "metric": feedback["metric_name"],
-                        "score": "N/A",
-                        "explanation": "Invalid response format",
-                    })
-            except Exception as e:
-                results.append({
-                    "metric": feedback["metric_name"],
-                    "score": "N/A",
-                    "explanation": f"Error during evaluation: {str(e)}",
-                })
-
-        return results
-
+        return self.generate_score_and_reasons(system_prompt, user_prompt)
 
 
 # Instantiate Trulens Feedback
-#custom_feedback = CustomFeedback()
+custom_feedback = CustomFeedback()
+
+
+from trulens_eval.feedback import Feedback
 
 
 def process_excel_data(data: pd.DataFrame) -> pd.DataFrame:
