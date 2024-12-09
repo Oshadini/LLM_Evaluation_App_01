@@ -70,7 +70,20 @@ def manage_feedback(row_data: Dict[str, str], feedback: Feedback):
     rec = recording.get()
 
     feedback_results = {}
-    for feedback_obj, feedback_result in rec.wait_for_feedback_results().items():
+    feedback_data = rec.wait_for_feedback_results()
+    
+    if not feedback_data:
+        return {"error": "No feedback results were generated."}
+
+    for feedback_obj, feedback_result in feedback_data.items():
+        # Safeguard: Check if 'calls' exist and are non-empty
+        if not feedback_result.calls:
+            feedback_results[feedback_obj.name] = {
+                "score": None,
+                "reason": "No calls were recorded."
+            }
+            continue
+
         meta = feedback_result.calls[0].meta
         feedback_results[feedback_obj.name] = {
             "score": feedback_result.result,
@@ -78,6 +91,7 @@ def manage_feedback(row_data: Dict[str, str], feedback: Feedback):
         }
 
     return feedback_results
+
 
 
 # Streamlit App Configuration
