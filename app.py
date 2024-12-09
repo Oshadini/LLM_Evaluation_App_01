@@ -4,20 +4,20 @@ import streamlit as st
 import pandas as pd
 import openai
 from trulens_eval import Tru, TruChain, Feedback
+from trulens_eval.runnable import Runnable
 from trulens_eval.feedback.provider import OpenAI as TruOpenAI
 
 
 # Initialize OpenAI and TruLens
 openai.api_key = st.secrets["OPENAI_API_KEY"]
+tru_openai_runnable = TruOpenAI(api_key=openai.api_key)  # Wrap OpenAI instance as a Runnable
 tru = Tru()
-feedback_provider = TruOpenAI(api_key=openai.api_key)
+tru_chain = TruChain(tru_openai_runnable)  # Pass the runnable TruOpenAI instance here
 
 
-# Custom TruLens feedback evaluation logic
 class CustomFeedback:
     def __init__(self):
-        self.tru = Tru()
-        self.tru_chain = TruChain(feedback_provider)
+        self.tru_chain = tru_chain  # Use the wrapped TruChain object
 
     def evaluate_prompt(self, prompt: str, generated: str) -> (float, str):
         """
@@ -28,23 +28,20 @@ class CustomFeedback:
         """
         # Evaluate feedback using TruLens tools
         try:
-            # Perform evaluation using TruChain
-            feedback = self.tru_chain.evaluate_single_feedback(
-                prompt=prompt,
-                generated=generated
-            )
+            # Pass context to the TruChain pipeline and get feedback evaluation
+            feedback_result = self.tru_chain.invoke({"prompt": prompt, "response": generated})
+            
+            # Extract the score and explanation
+            score = feedback_result["score"] if "score" in feedback_result else 0.0
+            explanation = feedback_result.get("explanation", "No explanation provided")
 
-            # Extract score and explanation
-            score = feedback.feedback_score  # Numeric score
-            explanation = feedback.explanation  # Feedback explanation text
-
-            # Ensure score is valid within [0,1]
+            # Ensure the score is between 0-1
             if 0 <= score <= 1:
                 return score, explanation
             else:
-                return 0.0, "Invalid feedback score range"
+                return 0.0, "Score outside expected range."
         except Exception as e:
-            st.error(f"Error with TruLens evaluation: {e}")
+            st.error(f"TruLens evaluation error: {e}")
             return 0.0, f"Error with TruLens evaluation: {str(e)}"
 
 
