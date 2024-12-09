@@ -47,7 +47,7 @@ class CustomFeedback:
             )
 
             # Parse the response
-            generated_feedback = response['choices'][0]['message']['content'].strip()
+            generated_feedback = response.choices[0].message.content.strip()
             # Extract the first number from the response (the score) for evaluation purposes.
             try:
                 # Extract numerical score from response (we assume it's at the beginning).
