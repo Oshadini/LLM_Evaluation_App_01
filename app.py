@@ -7,7 +7,7 @@ from trulens_eval import Tru, TruChain, Feedback
 from trulens_eval.feedback.provider import OpenAI as TruOpenAI
 
 # Initialize TruLens and OpenAI Feedback
-openai.api_key = "your_openai_api_key"  # Replace with your OpenAI API key
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 tru = Tru()
 feedback_provider = TruOpenAI(api_key=openai.api_key)
 
