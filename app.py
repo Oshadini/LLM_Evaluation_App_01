@@ -55,27 +55,30 @@ if uploaded_file:
         st.subheader("Custom Metric Evaluation")
 
         # Iterate over each row and evaluate
+       # Iterate over each row and evaluate
         results = []
         for index, row in data.iterrows():
             question = row.get("Question")
             answer = row.get("Answer")
             context = row.get("Context")
-
+        
             # Define feedback function
             f_custom_function = (
                 Feedback(standalone.custom_metric_score)
                 .on(answer=Select.RecordOutput)
                 .on(question=Select.RecordInput)
-                .on(context=context)
+                .on(context=Select.Literal(context))  # Wrap context in a Lens
             )
-
+        
             # Simulate chain and record evaluation
             tru_recorder = TruChain(chain=None, feedbacks=[f_custom_function])
-
+        
             with tru_recorder as recording:
                 # Simulating a response using the prompt
                 llm_response = f"Simulated Response for Question: {question}"
-
+                # Manually inject a mock output
+                recording.record_output(llm_response)
+        
             # Fetch feedback results
             record = recording.get()
             for feedback, feedback_result in record.wait_for_feedback_results().items():
@@ -85,12 +88,13 @@ if uploaded_file:
                         "Score": feedback_result.result,
                         "Reason": feedback_result.calls[0].meta.get("reason", "No explanation provided")
                     })
-
+        
         # Display results
         for result in results:
             st.markdown(f"### Row {result['Row']} Results")
             st.write(f"**Score:** {result['Score']}")
             st.write(f"**Reason:** {result['Reason']}")
             st.divider()
+
 else:
     st.info("Please upload an Excel file to proceed.")
