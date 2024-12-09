@@ -4,8 +4,7 @@ import streamlit as st
 import pandas as pd
 from trulens_eval.feedback.provider import OpenAI
 from trulens_eval.feedback import prompts
-from trulens_eval import Feedback, Tru
-
+from trulens_eval import Tru  # Avoid unsupported imports
 
 # Initialize Trulens
 openai_api_key = st.secrets["OPENAI_API_KEY"]
@@ -29,45 +28,45 @@ class TrulensFeedbackHandler:
         :return: Feedback evaluation score and explanation.
         """
         try:
-            # Simple evaluation mechanism via Trulens Feedback
-            feedback = tru.evaluate_feedback({
+            # Minimal feedback evaluation using Trulens
+            evaluation_feedback = tru.evaluate_feedback({
                 "prompt": prompt,
-                "response": response
+                "response": response,
             })
 
-            # If successful evaluation is performed, return computed score and explanation
-            if feedback:
-                score = feedback.feedback_score
-                explanation = feedback.explanation
+            # Extract feedback details safely
+            if evaluation_feedback:
+                score = evaluation_feedback.feedback_score
+                explanation = evaluation_feedback.explanation
             else:
                 score = 0.0
-                explanation = "No evaluation logic returned feedback."
+                explanation = "No valid evaluation provided."
             return score, explanation
 
         except Exception as e:
-            st.error(f"Error during feedback evaluation: {e}")
-            return 0.0, "Error encountered while processing evaluation."
+            st.error(f"Evaluation error: {e}")
+            return 0.0, "Error during feedback evaluation"
 
 
 # Streamlit Application
 def main():
-    st.title("Trulens Feedback Application - User Data Evaluation")
+    st.title("Trulens Feedback Application - Data Evaluation")
 
-    # Section for Excel file upload
+    # Section for user file upload
     uploaded_file = st.file_uploader(
-        "Upload your Excel file for processing and evaluation", type=["xlsx"]
+        "Upload your Excel file to process and evaluate metrics", type=["xlsx"]
     )
 
     if uploaded_file:
-        # Read user-uploaded Excel data
+        # Read uploaded Excel
         data = pd.read_excel(uploaded_file)
-        st.write("Uploaded Data Preview:")
+        st.write("Preview of Uploaded Data:")
         st.dataframe(data)
 
-        # Allow users to define custom prompts dynamically
-        st.header("Define Your Feedback Logic")
+        # User sets prompts and columns dynamically
+        st.header("Define Your Metrics and Evaluation Logic")
         num_metrics = st.number_input(
-            "How many metrics to evaluate?", min_value=1, step=1, value=1
+            "How many metrics would you like to evaluate?", min_value=1, step=1, value=1
         )
 
         user_metrics = {}
@@ -79,7 +78,7 @@ def main():
                 key=f"metric{i}_columns"
             )
             user_prompt = st.text_input(
-                f"Enter prompt logic for Metric {i}:",
+                f"Enter evaluation prompt for Metric {i}:",
                 key=f"metric{i}_prompt"
             )
 
@@ -89,7 +88,7 @@ def main():
                     "prompt": user_prompt
                 }
 
-        # Execute feedback computation after user setup
+        # Trigger the feedback logic computation
         if st.button("Run Evaluation"):
             st.subheader("Processing feedback via Trulens")
             feedback_results = []
@@ -97,12 +96,12 @@ def main():
 
             for metric_name, metric_info in user_metrics.items():
                 try:
-                    # Process valid, non-empty contexts from provided columns
+                    # Process user input columns and ensure valid data
                     valid_data = data[metric_info["columns"]].dropna(how="any")
                     for idx, row in valid_data.iterrows():
                         combined_context = " ".join(row.astype(str))
-                        
-                        # Evaluate feedback using Trulens' evaluation mechanism
+
+                        # Evaluate using Trulens logic
                         score, explanation = trulens_handler.evaluate(
                             prompt=metric_info["prompt"], response=combined_context
                         )
@@ -115,11 +114,11 @@ def main():
                             "Explanation": explanation
                         })
 
-                    # Convert results to DataFrame for visualization in Streamlit
+                    # Convert results to a DataFrame for visualization
                     feedback_df = pd.DataFrame(feedback_results)
                     st.write(feedback_df)
 
-                    # Enable user to download results as a CSV file
+                    # Allow users to download results
                     csv_data = feedback_df.to_csv(index=False).encode('utf-8')
                     st.download_button(
                         label="Download Results as CSV",
@@ -128,9 +127,9 @@ def main():
                         mime="text/csv"
                     )
                 except Exception as e:
-                    st.error(f"Error evaluating '{metric_name}': {e}")
+                    st.error(f"Error processing metric '{metric_name}': {e}")
 
 
-# Run the Streamlit app
+# Execute the application
 if __name__ == "__main__":
     main()
