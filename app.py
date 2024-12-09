@@ -1,124 +1,133 @@
 import streamlit as st
 import pandas as pd
+import json
 from typing import Optional, Dict, Tuple
-from trulens_eval import Feedback, Select
+from trulens_eval import Feedback, Select, TruSession, App
 from trulens_eval.feedback.provider import OpenAI
-from trulens.core import TruSession
-from trulens_eval.app import App
+from langchain_openai import ChatOpenAI
 
-# Define a custom provider with a feedback function
-class CustomFeedBackFunction(OpenAI):
-    def custom_metric_score(self, answer: Optional[str] = None, question: Optional[str] = None, context: Optional[str] = None) -> Tuple[float, Dict]:
+# Extend OpenAI provider with custom feedback functions
+class Custom_FeedBack(OpenAI):
+    def style_check_professional(self, response: str) -> float:
         """
-        A function that evaluates the relevance of an answer, question, and context.
+        Custom feedback function to grade the professional style of the response.
+
         Args:
-            answer (str): The answer being evaluated.
-            question (str): The question being evaluated.
-            context (str): The context provided.
+            response (str): Text to be graded for professional style.
 
         Returns:
-            Tuple[float, Dict]: Score between 0-1 and the reasoning.
+            float: A value between 0 and 1. 0 being "not professional" and 1 being "professional".
         """
-        professional_prompt = """
-        Rate the relevance on a scale from 0 (not at all related) to 10 (extremely related):
+        professional_prompt = f"""
+        Please rate the professionalism of the following text on a scale from 0 to 10, where 0 is not at all professional and 10 is extremely professional:
+
+        {response}
         """
-        if answer:
-            professional_prompt += f"Answer: {answer}\n"
-        if question:
-            professional_prompt += f"Question: {question}\n"
-        if context:
-            professional_prompt += f"Context: {context}\n"
+        return self.generate_score(system_prompt=professional_prompt)
 
-        return self.generate_score_and_reasons(
-            system_prompt="RELEVANCE",
-            user_prompt=professional_prompt
-        )
+class CustomOpenAIReasoning(OpenAI):
+    def context_relevance_with_cot_reasons_extreme(self, question: str, context: str) -> Tuple[float, Dict]:
+        """
+        Tweaked version of context relevance with chain-of-thought (CoT) reasoning, extending OpenAI provider.
 
+        Args:
+            question (str): The question being asked.
+            context (str): A statement to the question.
 
-# Initialize TruLens App with minimal required context.
-app = App(
-    name="custom_feedback_ui",
-    module="custom_feedback_ui_module",  # This should be a name that represents your current module
-)
+        Returns:
+            Tuple[float, Dict]: Score between 0-1 and reasoning explanation.
+        """
+        system_prompt = "RELEVANCE"
+        user_prompt = f"""
+        Evaluate the relevance of the following context to the question, providing reasons using a chain-of-thought methodology:
 
+        Question: {question}
+        Context: {context}
+        """
+        return self.generate_score_and_reasons(system_prompt=system_prompt, user_prompt=user_prompt)
 
-# Streamlit UI
+# Streamlit App Configuration
 st.set_page_config(
-    page_title="Custom LLM Evaluation with TruLens",
+    page_title="Custom Metrics Evaluation",
     page_icon="📊",
-    layout="wide",
+    layout="wide"
 )
+st.title("Custom Metrics Evaluation Using TruLens")
 
-st.title("Evaluate with Custom Metrics Using TruLens")
+# File Upload
+uploaded_file = st.file_uploader("Upload an Excel file", type=["xlsx"])
 
-# File uploader for user to upload Excel with Question, Context, Answer
-uploaded_file = st.file_uploader(
-    "Upload an Excel file with 'Question', 'Answer', and 'Context' columns", type=["xlsx"]
-)
+# Placeholder model for generating responses
+model = ChatOpenAI(model="gpt-4o", openai_api_key=st.secrets["OPENAI_API_KEY"], max_tokens=1024)
+
+# Feedback Class
+class CustomFeedback:
+    def __init__(self):
+        self.feedbacks = []
+
+    def add_feedback(self, metric_name, feedback_function, combination):
+        self.feedbacks.append({"metric_name": metric_name, "feedback_function": feedback_function, "combination": combination})
+
+    def evaluate(self, data):
+        results = []
+        for feedback in self.feedbacks:
+            feedback_function = feedback["feedback_function"]
+            combination = feedback["combination"]
+
+            # Generate input text for the feedback function
+            input_text = "\n".join([f"{col}: {data[col]}" for col in combination if col in data])
+
+            # Invoke the feedback function
+            try:
+                result = feedback_function(input_text)
+                results.append({
+                    "metric": feedback["metric_name"],
+                    "score": result if isinstance(result, float) else "N/A",
+                    "explanation": "Processed successfully" if isinstance(result, float) else "Invalid result type",
+                })
+            except Exception as e:
+                results.append({
+                    "metric": feedback["metric_name"],
+                    "score": "Error",
+                    "explanation": str(e),
+                })
+        return results
 
 if uploaded_file:
-    # Read uploaded data
+    # Load and display the Excel file
     data = pd.read_excel(uploaded_file)
-    st.write("Uploaded Data:")
+    st.write("File Loaded:")
     st.dataframe(data)
 
-    # Ensure required columns exist
-    required_columns = ["Question", "Answer", "Context"]
-    if not all(col in data.columns for col in required_columns):
-        st.error(
-            f"The uploaded file must contain the following columns: {', '.join(required_columns)}"
-        )
-    else:
-        st.subheader("Processing Results")
+    # User input for number of metrics
+    num_metrics = st.number_input("How many metrics do you want to define?", min_value=1, max_value=10, step=1)
 
-        # Create feedback pipeline
-        standalone_provider = CustomFeedBackFunction()
-        f_custom_function = Feedback(standalone_provider.custom_metric_score).on(
-            question=Select.RecordInput,
-            context=Select.RecordInput,
-            answer=Select.RecordOutput,
-        )
+    feedback = CustomFeedback()
+    metric_tabs = st.tabs([f"Metric {i+1}" for i in range(num_metrics)])
 
-        # Process each row in the uploaded data
-        results = []
+    for i, tab in enumerate(metric_tabs):
+        with tab:
+            st.subheader(f"Define Metric {i+1}")
+            metric_name = st.text_input(f"Metric Name for Metric {i+1}")
+            columns = st.multiselect(f"Select input combinations for Metric {i+1}", options=data.columns)
+            feedback_type = st.selectbox(f"Feedback Type for Metric {i+1}", ["Professional Style", "Context Relevance"])
+
+            if feedback_type == "Professional Style":
+                custom_feedback_provider = Custom_FeedBack()
+                feedback.add_feedback(metric_name, custom_feedback_provider.style_check_professional, columns)
+            elif feedback_type == "Context Relevance":
+                custom_feedback_provider = CustomOpenAIReasoning()
+                feedback.add_feedback(metric_name, custom_feedback_provider.context_relevance_with_cot_reasons_extreme, columns)
+
+    if st.button("Evaluate Metrics"):
+        st.subheader("Evaluation Results")
         for index, row in data.iterrows():
-            # Simulate session context
-            with TruSession() as session:
-                # Record the input data
-                record = {
-                    "question": row["Question"],
-                    "context": row["Context"],
-                    "answer": row["Answer"]
-                }
-                feedback_results = session.run_feedback_functions(
-                    record=record,
-                    feedback_functions=[f_custom_function]
-                )
-
-                # Extract score and explanation from results
-                result = feedback_results[0]
-                results.append({
-                    "Row": index + 1,
-                    "Score": result.result,
-                    "Reason": result.calls[0].meta.get("reason", "No explanation provided")
-                })
-
-        # Show results to user
-        st.write("### Feedback Results")
-        for result in results:
-            st.markdown(f"#### Row {result['Row']}")
-            st.write(f"**Score:** {result['Score']}")
-            st.write(f"**Reason:** {result['Reason']}")
-            st.divider()
-
-        # Allow user to download results as CSV
-        download_df = pd.DataFrame(results)
-        csv = download_df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="Download Results",
-            data=csv,
-            file_name="evaluation_results.csv",
-            mime="text/csv"
-        )
+            results = feedback.evaluate(row.to_dict())
+            st.markdown(f"### Row {index + 1} Results")
+            for result in results:
+                st.write(f"**Metric:** {result['metric']}")
+                st.write(f"**Score:** {result['score']}")
+                st.write(f"**Explanation:** {result['explanation']}")
+                st.divider()
 else:
     st.info("Please upload an Excel file to proceed.")
