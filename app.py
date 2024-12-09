@@ -1,8 +1,10 @@
+from trulens_eval.app import App
 import streamlit as st
 import pandas as pd
 from typing import Optional, Dict, Tuple
 from trulens_eval import Feedback, Select, Tru, TruChain
 from trulens_eval.feedback.provider import OpenAI
+
 
 class Custom_FeedBack(OpenAI):
     def custom_metric_score(self, answer: Optional[str] = None, question: Optional[str] = None, context: Optional[any] = None) -> Tuple[float, Dict]:
@@ -54,31 +56,35 @@ if uploaded_file:
     else:
         st.subheader("Custom Metric Evaluation")
 
+        # Set up App with proper context handling
+        app = App()  # Create an instance of App
+
         # Iterate over each row and evaluate
-       # Iterate over each row and evaluate
         results = []
         for index, row in data.iterrows():
             question = row.get("Question")
             answer = row.get("Answer")
             context = row.get("Context")
-        
-            # Define feedback function
+
+            # Use App.select_context() to dynamically create a Lens for context
+            selected_context = app.select_context(context)  # Transform the string into a proper Lens
+
+            # Define feedback function with the selected Lens for context
             f_custom_function = (
                 Feedback(standalone.custom_metric_score)
                 .on(answer=Select.RecordOutput)
                 .on(question=Select.RecordInput)
-                .on(context=Select.LiteralInput(context))  # Wrap context in a Lens
+                .on(context=selected_context)  # Pass the context as a Lens
             )
-        
+
             # Simulate chain and record evaluation
             tru_recorder = TruChain(chain=None, feedbacks=[f_custom_function])
-        
+
             with tru_recorder as recording:
-                # Simulating a response using the prompt
+                # Simulating a response
                 llm_response = f"Simulated Response for Question: {question}"
-                # Manually inject a mock output
                 recording.record_output(llm_response)
-        
+
             # Fetch feedback results
             record = recording.get()
             for feedback, feedback_result in record.wait_for_feedback_results().items():
@@ -88,13 +94,12 @@ if uploaded_file:
                         "Score": feedback_result.result,
                         "Reason": feedback_result.calls[0].meta.get("reason", "No explanation provided")
                     })
-        
+
         # Display results
         for result in results:
             st.markdown(f"### Row {result['Row']} Results")
             st.write(f"**Score:** {result['Score']}")
             st.write(f"**Reason:** {result['Reason']}")
             st.divider()
-
 else:
     st.info("Please upload an Excel file to proceed.")
