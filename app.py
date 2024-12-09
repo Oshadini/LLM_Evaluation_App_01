@@ -84,9 +84,10 @@ def main():
             for metric_name, metric_info in metrics.items():
                 # Generate OpenAI response for the metric prompt
                 # Generate OpenAI response for the metric prompt
+                # Generate OpenAI response for the metric prompt using the new API
                 try:
                     response = openai.ChatCompletion.create(
-                        model="gpt-4",  # Use "gpt-3.5-turbo" or "gpt-4"
+                        model="gpt-4o",  # Use "gpt-3.5-turbo" or "gpt-4"
                         messages=[
                             {"role": "system", "content": "You are an assistant that evaluates content quality."},
                             {"role": "user", "content": metric_info['prompt']}
@@ -97,6 +98,7 @@ def main():
                     generated_text = response['choices'][0]['message']['content'].strip()
                 except Exception as e:
                     generated_text = f"Error generating response: {e}"
+
 
 
                 # Evaluate the generated text using custom feedback
