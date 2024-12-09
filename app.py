@@ -39,7 +39,7 @@ class CustomFeedback(OpenAI):
 custom_feedback = CustomFeedback()
 
 
-from trulens_eval.feedback import Select, Feedback
+from trulens_eval.feedback import Feedback
 
 
 def process_excel_data(data: pd.DataFrame) -> pd.DataFrame:
