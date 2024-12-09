@@ -87,7 +87,7 @@ def main():
                 # Generate OpenAI response for the metric prompt using the new API
                 try:
                     response = openai.chat.completions.create(
-                        model="gpt-4o",  # Use "gpt-3.5-turbo" or "gpt-4"
+                        model = ChatOpenAI(model="gpt-4o", openai_api_key = openai.api_key, max_tokens=1024)
                         messages=[
                             {"role": "system", "content": "You are an assistant that evaluates content quality."},
                             {"role": "user", "content": metric_info['prompt']}
