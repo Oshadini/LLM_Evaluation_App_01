@@ -55,7 +55,7 @@ def process_excel_data(data: pd.DataFrame) -> pd.DataFrame:
         ref_context = row.get("Reference Content", "")
         ref_answer = row.get("Reference Answer", "")
         
-        # Directly pass feedback logic with simple mappings instead of Lens
+        # Configure feedback using Trulens's OpenAI feedback mechanism
         feedback_function = Feedback(OpenAI().custom_metric_score).on(
             answer=lambda x: answer,
             question=lambda x: question,
@@ -68,7 +68,7 @@ def process_excel_data(data: pd.DataFrame) -> pd.DataFrame:
             app_id="trulens_eval_app"
         )
 
-        # Run the chain
+        # Run evaluation
         with tru_chain as recording:
             result = tru_chain.invoke({
                 "answer": answer,
@@ -76,7 +76,7 @@ def process_excel_data(data: pd.DataFrame) -> pd.DataFrame:
                 "question": question
             })
 
-        # Collect feedback from the chain
+        # Collect feedback
         tru = Tru()
         records, feedback = tru.get_records_and_feedback(app_ids=[])
 
