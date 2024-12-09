@@ -2,9 +2,9 @@ import streamlit as st
 import pandas as pd
 from trulens_eval.feedback.provider import OpenAI
 from trulens_eval.utils.generated import re_0_10_rating
-from trulens_eval.feedback import prompts
-from trulens_eval import Feedback, Select, Tru, TruChain
+from trulens_eval import Feedback, TruChain, Lens, Tru
 from typing import Optional, Dict, Tuple
+
 
 
 # Load Trulens's Feedback Class
@@ -55,37 +55,36 @@ def process_excel_data(data: pd.DataFrame) -> pd.DataFrame:
         ref_context = row.get("Reference Content", "")
         ref_answer = row.get("Reference Answer", "")
         
-        # Define lenses manually using `Lens`
+        # Define Lenses for handling feedback pathways
         context_lens = Lens(lambda x: context)
         question_lens = Lens(lambda x: question)
         answer_lens = Lens(lambda x: answer)
 
-        # Feedback configuration using these lenses
+        # Set up feedback using Trulens's Feedback and Lenses
         feedback_function = Feedback(OpenAI().custom_metric_score).on(
             answer=answer_lens,
             question=question_lens,
             context=context_lens
         )
 
-        # Create TruChain for evaluation
+        # Set up TruChain for evaluation
         tru_chain = TruChain(
             chain=feedback_function,
             app_id="trulens_eval_app"
         )
 
-        # Run the chain and collect results
+        # Run the chain
         with tru_chain as recording:
             result = tru_chain.invoke({
                 "answer": answer,
                 "context": context,
                 "question": question
             })
-        
-        # Fetch results using Trulens
+
+        # Collect feedback from the chain
         tru = Tru()
         records, feedback = tru.get_records_and_feedback(app_ids=[])
 
-        # Process evaluation results
         for fb, fb_result in records.items():
             results.append({
                 "Context": context,
@@ -99,6 +98,7 @@ def process_excel_data(data: pd.DataFrame) -> pd.DataFrame:
 
     # Convert results into a DataFrame
     return pd.DataFrame(results)
+
 
 
 
