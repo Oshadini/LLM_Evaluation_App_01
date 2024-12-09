@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from trulens_eval.feedback.provider import OpenAI
 from trulens_eval.utils.generated import re_0_10_rating
-from trulens_eval import Feedback, TruChain, Lens, Tru
+from trulens_eval import Feedback, TruChain, Tru
 from typing import Optional, Dict, Tuple
 
 
@@ -55,16 +55,11 @@ def process_excel_data(data: pd.DataFrame) -> pd.DataFrame:
         ref_context = row.get("Reference Content", "")
         ref_answer = row.get("Reference Answer", "")
         
-        # Define Lenses for handling feedback pathways
-        context_lens = Lens(lambda x: context)
-        question_lens = Lens(lambda x: question)
-        answer_lens = Lens(lambda x: answer)
-
-        # Set up feedback using Trulens's Feedback and Lenses
+        # Directly pass feedback logic with simple mappings instead of Lens
         feedback_function = Feedback(OpenAI().custom_metric_score).on(
-            answer=answer_lens,
-            question=question_lens,
-            context=context_lens
+            answer=lambda x: answer,
+            question=lambda x: question,
+            context=lambda x: context
         )
 
         # Set up TruChain for evaluation
