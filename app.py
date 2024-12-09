@@ -3,11 +3,13 @@
 import streamlit as st
 import pandas as pd
 import openai
-from trulens_eval import Feedback, feedback_types
+from trulens_eval import Feedback, Tru
+from trulens_eval.feedback import FeedbackType
 
-# Initialize TruLens Feedback
-feedback = Feedback()
+# Initialize TruLens and Feedback
+tru = Tru()
 openai.api_key = "your_openai_api_key"  # Replace with your OpenAI API key
+feedback = Feedback()
 
 # Define the main function for the app
 def main():
@@ -72,8 +74,10 @@ def main():
                     explanation = f"Error generating response: {e}"
 
                 # Evaluate the explanation with TruLens Feedback
-                # Here we use a sample feedback mechanism from TruLens
-                score = feedback(feedback_types.exact_match, explanation)
+                try:
+                    score = feedback.exact_match(metric_info['prompt'], explanation)
+                except Exception as e:
+                    score = f"Error in feedback evaluation: {e}"
 
                 # Append the result
                 results.append({
