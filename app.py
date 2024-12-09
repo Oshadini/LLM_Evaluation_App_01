@@ -42,6 +42,9 @@ from trulens_eval.feedback import Feedback
 # Instantiate Trulens Feedback
 custom_feedback = CustomFeedback()
 
+from trulens_eval.feedback.provider import OpenAI
+from trulens_eval import Feedback, TruChain, Tru, Lens
+
 def process_excel_data(data: pd.DataFrame) -> pd.DataFrame:
     """
     Processes the uploaded data and performs Trulens evaluation on each row.
@@ -54,12 +57,17 @@ def process_excel_data(data: pd.DataFrame) -> pd.DataFrame:
         answer = row.get("Answer", "")
         ref_context = row.get("Reference Content", "")
         ref_answer = row.get("Reference Answer", "")
-        
-        # Use custom feedback logic
-        feedback_function = Feedback(custom_feedback.custom_metric_score).on(
-            answer=lambda x: answer,
-            question=lambda x: question,
-            context=lambda x: context
+
+        # Define lenses using Trulens's `Lens` class
+        context_lens = Lens(lambda x: context)
+        question_lens = Lens(lambda x: question)
+        answer_lens = Lens(lambda x: answer)
+
+        # Feedback configuration using these lenses
+        feedback_function = Feedback(CustomFeedback().custom_metric_score).on(
+            answer=answer_lens,
+            question=question_lens,
+            context=context_lens
         )
 
         # Set up TruChain for evaluation
@@ -68,7 +76,7 @@ def process_excel_data(data: pd.DataFrame) -> pd.DataFrame:
             app_id="trulens_eval_app"
         )
 
-        # Run evaluation
+        # Run the chain and collect results
         with tru_chain as recording:
             result = tru_chain.invoke({
                 "answer": answer,
@@ -76,10 +84,11 @@ def process_excel_data(data: pd.DataFrame) -> pd.DataFrame:
                 "question": question
             })
 
-        # Collect feedback
+        # Collect feedback using Tru
         tru = Tru()
         records, feedback = tru.get_records_and_feedback(app_ids=[])
 
+        # Process evaluation results
         for fb, fb_result in records.items():
             results.append({
                 "Context": context,
@@ -93,7 +102,6 @@ def process_excel_data(data: pd.DataFrame) -> pd.DataFrame:
 
     # Convert results into a DataFrame
     return pd.DataFrame(results)
-   
 
 
 
