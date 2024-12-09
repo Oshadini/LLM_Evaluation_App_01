@@ -35,12 +35,12 @@ class CustomFeedback(OpenAI):
         return self.generate_score_and_reasons(system_prompt, user_prompt)
 
 
-# Instantiate Trulens Feedback
-custom_feedback = CustomFeedback()
+
 
 
 from trulens_eval.feedback import Feedback
-
+# Instantiate Trulens Feedback
+custom_feedback = CustomFeedback()
 
 def process_excel_data(data: pd.DataFrame) -> pd.DataFrame:
     """
@@ -55,8 +55,8 @@ def process_excel_data(data: pd.DataFrame) -> pd.DataFrame:
         ref_context = row.get("Reference Content", "")
         ref_answer = row.get("Reference Answer", "")
         
-        # Configure feedback using Trulens's OpenAI feedback mechanism
-        feedback_function = Feedback(OpenAI().custom_metric_score).on(
+        # Use custom feedback logic
+        feedback_function = Feedback(custom_feedback.custom_metric_score).on(
             answer=lambda x: answer,
             question=lambda x: question,
             context=lambda x: context
@@ -93,6 +93,7 @@ def process_excel_data(data: pd.DataFrame) -> pd.DataFrame:
 
     # Convert results into a DataFrame
     return pd.DataFrame(results)
+   
 
 
 
