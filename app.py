@@ -4,6 +4,7 @@ from trulens_eval import Feedback, Select, Tru, TruChain
 from trulens_eval.feedback.provider import OpenAI
 from typing import Optional, Dict, Tuple
 from trulens_eval.app import App
+from langchain_openai import ChatOpenAI
 
 class CustomFeedback:
     def __init__(self, chain):
