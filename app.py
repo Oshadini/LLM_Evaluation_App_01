@@ -4,7 +4,6 @@ from trulens_eval import Feedback, Select, Tru, TruChain
 from trulens_eval.feedback.provider import OpenAI
 from typing import Optional, Dict, Tuple
 from trulens_eval.app import App
-from langchain_openai import ChatOpenAI
 
 class CustomFeedback:
     def __init__(self, chain):
@@ -14,7 +13,7 @@ class CustomFeedback:
     def add_feedback(self, metric_name, prompt, combination):
         self.feedbacks.append({"metric_name": metric_name, "prompt": prompt, "combination": combination})
 
-    def evaluate(self, data):
+    def evaluate(self, data, openai_client):
         results = []
         for feedback in self.feedbacks:
             metric_name = feedback["metric_name"]
@@ -27,7 +26,7 @@ class CustomFeedback:
 
             # Evaluate using Trulens feedback
             f_custom_function = (
-                Feedback(Custom_FeedBack(self.chain).custom_metric_score)
+                Feedback(Custom_FeedBack(openai_client).custom_metric_score)
                 .on(answer=Select.RecordOutput)
                 .on(question=Select.RecordInput)
                 .on(context=input_text)
@@ -50,7 +49,10 @@ class CustomFeedback:
 
         return results
 
-class Custom_FeedBack(OpenAI):
+class Custom_FeedBack:
+    def __init__(self, openai_client):
+        self.openai_client = openai_client
+
     def custom_metric_score(self, answer: Optional[str] = None, question: Optional[str] = None, context: Optional[any] = None) -> Tuple[float, Dict]:
         professional_prompt = f"where 0 is not at all related and 10 is extremely related:\n\n"
         
@@ -62,7 +64,7 @@ class Custom_FeedBack(OpenAI):
             professional_prompt += f"Context: {context}\n"
 
         user_prompt = professional_prompt
-        return self.generate_score_and_reasons(system_prompt="RELEVANCE", user_prompt=user_prompt)
+        return self.openai_client.generate_score_and_reasons(system_prompt="RELEVANCE", user_prompt=user_prompt)
 
 st.set_page_config(page_title="Custom Metrics Evaluation", page_icon="📊", layout="wide")
 st.title("Custom Metrics Evaluation")
@@ -76,7 +78,12 @@ if uploaded_file:
     # User input: Number of metrics
     num_metrics = st.number_input("How many metrics do you want to define?", min_value=1, max_value=10, step=1)
 
-    chain = ChatOpenAI(model="gpt-4o", openai_api_key=st.secrets["OPENAI_API_KEY"], max_tokens=1024)
+    # Initialize OpenAI client
+    openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
+    # Create a chain
+    chain = TruChain(openai_client)
+
     feedback = CustomFeedback(chain)
 
     metric_tabs = st.tabs([f"Metric {i+1}" for i in range(num_metrics)])
@@ -91,7 +98,7 @@ if uploaded_file:
     if st.button("Evaluate Metrics"):
         st.subheader("Evaluation Results")
         for index, row in data.iterrows():
-            results = feedback.evaluate(row.to_dict())
+            results = feedback.evaluate(row.to_dict(), openai_client)
             st.markdown(f"### Row {index + 1} Results")
             for result in results:
                 st.write(f"**Metric:** {result['metric']}")
