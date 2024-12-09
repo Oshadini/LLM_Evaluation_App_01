@@ -1,61 +1,25 @@
 import streamlit as st
 import pandas as pd
+from typing import Optional, Dict, Tuple
 from trulens_eval import Feedback, Select, Tru, TruChain
 from trulens_eval.feedback.provider import OpenAI
-from typing import Optional, Dict, Tuple
-from trulens_eval.app import App
 
-class CustomFeedback:
-    def __init__(self, chain):
-        self.feedbacks = []
-        self.chain = chain
-
-    def add_feedback(self, metric_name, prompt, combination):
-        self.feedbacks.append({"metric_name": metric_name, "prompt": prompt, "combination": combination})
-
-    def evaluate(self, data, openai_client):
-        results = []
-        for feedback in self.feedbacks:
-            metric_name = feedback["metric_name"]
-            prompt = feedback["prompt"]
-            combination = feedback["combination"]
-
-            # Generate a custom prompt using the selected combination of inputs
-            input_text = "\n".join([f"{col}: {data[col]}" for col in combination if col in data])
-            full_prompt = f"{prompt}\n\n{input_text}"
-
-            # Evaluate using Trulens feedback
-            f_custom_function = (
-                Feedback(Custom_FeedBack(openai_client).custom_metric_score)
-                .on(answer=Select.RecordOutput)
-                .on(question=Select.RecordInput)
-                .on(context=input_text)
-            )
-
-            tru_recorder = TruChain(self.chain, feedbacks=[f_custom_function])
-
-            with tru_recorder as recording:
-                self.chain.invoke(full_prompt)
-
-            # Fetch results
-            record = recording.get()
-            for fb, fb_result in record.wait_for_feedback_results().items():
-                if fb.name == "custom_metric_score":
-                    results.append({
-                        "metric": metric_name,
-                        "score": fb_result.result,
-                        "explanation": fb_result.calls[0].meta.get("reason", "No explanation provided")
-                    })
-
-        return results
-
-class Custom_FeedBack:
-    def __init__(self, openai_client):
-        self.openai_client = openai_client
-
+class Custom_FeedBack(OpenAI):
     def custom_metric_score(self, answer: Optional[str] = None, question: Optional[str] = None, context: Optional[any] = None) -> Tuple[float, Dict]:
-        professional_prompt = f"where 0 is not at all related and 10 is extremely related:\n\n"
-        
+        """
+        A function that evaluates the relevance of an answer, question, and context.
+
+        Args:
+            answer (str): An answer being evaluated.
+            question (str): A question being evaluated.
+            context (str): Context for the evaluation.
+
+        Returns:
+            float: A value between 0 and 1 indicating relevance.
+        """
+        professional_prompt = """
+        Rate the relevance on a scale from 0 (not at all related) to 10 (extremely related):
+        """
         if answer:
             professional_prompt += f"Answer: {answer}\n"
         if question:
@@ -63,45 +27,70 @@ class Custom_FeedBack:
         if context:
             professional_prompt += f"Context: {context}\n"
 
-        user_prompt = professional_prompt
-        return self.openai_client.generate_score_and_reasons(system_prompt="RELEVANCE", user_prompt=user_prompt)
+        return self.generate_score_and_reasons(
+            system_prompt="RELEVANCE",
+            user_prompt=professional_prompt
+        )
 
-st.set_page_config(page_title="Custom Metrics Evaluation", page_icon="📊", layout="wide")
-st.title("Custom Metrics Evaluation")
+standalone = Custom_FeedBack()
+st.set_page_config(
+    page_title="Evaluate with Custom Metrics",
+    page_icon="📊",
+    layout="wide",
+)
+st.title("Evaluate with Custom Metrics")
 
-uploaded_file = st.file_uploader("Upload an Excel file", type=["xlsx"])
+# Upload an Excel file
+uploaded_file = st.file_uploader("Upload an Excel file with 'Question', 'Answer', and 'Context' columns", type=["xlsx"])
 if uploaded_file:
     data = pd.read_excel(uploaded_file)
-    st.write("File Loaded:")
+    st.write("Uploaded Data:")
     st.dataframe(data)
 
-    # User input: Number of metrics
-    num_metrics = st.number_input("How many metrics do you want to define?", min_value=1, max_value=10, step=1)
+    # Ensure required columns are present
+    required_columns = ["Question", "Answer", "Context"]
+    if not all(col in data.columns for col in required_columns):
+        st.error(f"The uploaded file must contain the following columns: {', '.join(required_columns)}")
+    else:
+        st.subheader("Custom Metric Evaluation")
 
-    # Initialize OpenAI client
-    openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-
-    # Create a chain
-    chain = TruChain(openai_client)
-
-    feedback = CustomFeedback(chain)
-
-    metric_tabs = st.tabs([f"Metric {i+1}" for i in range(num_metrics)])
-    for i, tab in enumerate(metric_tabs):
-        with tab:
-            st.subheader(f"Define Metric {i+1}")
-            metric_name = st.text_input(f"Metric Name for Metric {i+1}")
-            columns = st.multiselect(f"Select input combinations for Metric {i+1}", options=data.columns)
-            custom_prompt = st.text_area(f"Custom Prompt for Metric {i+1}")
-            feedback.add_feedback(metric_name, custom_prompt, columns)
-
-    if st.button("Evaluate Metrics"):
-        st.subheader("Evaluation Results")
+        # Iterate over each row and evaluate
+        results = []
         for index, row in data.iterrows():
-            results = feedback.evaluate(row.to_dict(), openai_client)
-            st.markdown(f"### Row {index + 1} Results")
-            for result in results:
-                st.write(f"**Metric:** {result['metric']}")
-                st.write(f"**Score:** {result['score']}")
-                st.write(f"**Explanation:** {result['explanation']}")
-                st.divider()
+            question = row.get("Question")
+            answer = row.get("Answer")
+            context = row.get("Context")
+
+            # Define feedback function
+            f_custom_function = (
+                Feedback(standalone.custom_metric_score)
+                .on(answer=Select.RecordOutput)
+                .on(question=Select.RecordInput)
+                .on(context=context)
+            )
+
+            # Simulate chain and record evaluation
+            tru_recorder = TruChain(chain=None, feedbacks=[f_custom_function])
+
+            with tru_recorder as recording:
+                # Simulating a response using the prompt
+                llm_response = f"Simulated Response for Question: {question}"
+
+            # Fetch feedback results
+            record = recording.get()
+            for feedback, feedback_result in record.wait_for_feedback_results().items():
+                if feedback.name == "custom_metric_score":
+                    results.append({
+                        "Row": index + 1,
+                        "Score": feedback_result.result,
+                        "Reason": feedback_result.calls[0].meta.get("reason", "No explanation provided")
+                    })
+
+        # Display results
+        for result in results:
+            st.markdown(f"### Row {result['Row']} Results")
+            st.write(f"**Score:** {result['Score']}")
+            st.write(f"**Reason:** {result['Reason']}")
+            st.divider()
+else:
+    st.info("Please upload an Excel file to proceed.")
