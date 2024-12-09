@@ -46,6 +46,29 @@ class CustomOpenAIReasoning(OpenAI):
         return self.generate_score_and_reasons(system_prompt=system_prompt, user_prompt=user_prompt)
 
 # Function to manage feedback evaluation
+from langchain.chains.base import Chain
+
+class CustomChain(Chain):
+    """
+    A simple chain wrapper around ChatOpenAI to work with TruChain.
+    """
+    def __init__(self, llm):
+        super().__init__()
+        self.llm = llm
+
+    @property
+    def input_keys(self):
+        return ["input"]
+
+    @property
+    def output_keys(self):
+        return ["response"]
+
+    def _call(self, inputs):
+        prompt = inputs["input"]
+        response = self.llm.invoke(prompt)
+        return {"response": response}
+
 def manage_feedback(row_data: Dict[str, str], feedback: Feedback):
     """
     Evaluate feedback for the given row data and feedback function.
@@ -57,18 +80,19 @@ def manage_feedback(row_data: Dict[str, str], feedback: Feedback):
     Returns:
         Dict: Feedback evaluation results including score and reasoning.
     """
-    # Ensure proper initialization of ChatOpenAI and wrapping in a chain
-    app = ChatOpenAI(model="gpt-4o", openai_api_key=st.secrets["OPENAI_API_KEY"], max_tokens=1024)
+    # Initialize ChatOpenAI
+    llm = ChatOpenAI(model="gpt-4o", openai_api_key=st.secrets["OPENAI_API_KEY"], max_tokens=1024)
 
-    # Combine all selected columns into a single prompt
-    prompt = "\n".join([f"{key}: {value}" for key, value in row_data.items() if value])
+    # Wrap ChatOpenAI in a custom chain
+    app = CustomChain(llm=llm)
 
-    # Wrap ChatOpenAI in TruChain for proper recording
-    tru_recorder = TruChain(chain=app.invoke, app_id='C', feedbacks=[feedback])
+    # Initialize TruChain
+    tru_recorder = TruChain(app=app, app_id='C', feedbacks=[feedback])
 
     with tru_recorder as recording:
-        # Invoke the prompt and record it
-        llm_response = app.invoke(prompt)
+        # Combine all selected columns into a single prompt
+        prompt = "\n".join([f"{key}: {value}" for key, value in row_data.items() if value])
+        llm_response = app({"input": prompt})["response"]
 
     # Fetch recording data
     rec = recording.get()
