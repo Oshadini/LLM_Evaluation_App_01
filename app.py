@@ -2,10 +2,11 @@ import streamlit as st
 import pandas as pd
 import json
 from typing import Optional, Dict, Tuple
-from trulens_eval import Feedback, Select, TruSession, App
 from trulens_eval.feedback.provider import OpenAI
 from langchain_openai import ChatOpenAI
+from typing import Dict, Tuple
 
+from trulens.feedback import prompts
 # Extend OpenAI provider with custom feedback functions
 class Custom_FeedBack(OpenAI):
     def style_check_professional(self, response: str) -> float:
