@@ -3,7 +3,7 @@ import pandas as pd
 from trulens_eval import Feedback, Select, Tru, TruChain
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.schema import StrOutputParser
-from langchain.runnables import RunnablePassthrough
+from langchain_core.runnables import RunnablePassthrough
 from langchain_openai import ChatOpenAI
 from typing import Optional, Dict, Tuple
 
