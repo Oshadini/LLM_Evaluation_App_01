@@ -55,31 +55,37 @@ def process_excel_data(data: pd.DataFrame) -> pd.DataFrame:
         ref_context = row.get("Reference Content", "")
         ref_answer = row.get("Reference Answer", "")
         
-        # Replace with proper 'get' syntax for Trulens lens handling
-        f_feedback = Feedback(custom_feedback.custom_metric_score).on(
-            answer=Select.RecordOutput.get(answer),
-            question=Select.RecordInput.get(question),
-            context=Select.RecordInput.get(context)
+        # Define lenses manually using `Lens`
+        context_lens = Lens(lambda x: context)
+        question_lens = Lens(lambda x: question)
+        answer_lens = Lens(lambda x: answer)
+
+        # Feedback configuration using these lenses
+        feedback_function = Feedback(OpenAI().custom_metric_score).on(
+            answer=answer_lens,
+            question=question_lens,
+            context=context_lens
         )
 
-        # Use TruChain to capture the evaluation logic
+        # Create TruChain for evaluation
         tru_chain = TruChain(
-            chain=f_feedback,
+            chain=feedback_function,
             app_id="trulens_eval_app"
         )
-        
+
+        # Run the chain and collect results
         with tru_chain as recording:
             result = tru_chain.invoke({
                 "answer": answer,
                 "context": context,
                 "question": question
             })
-            
-        # Fetch Trulens evaluation feedback
+        
+        # Fetch results using Trulens
         tru = Tru()
         records, feedback = tru.get_records_and_feedback(app_ids=[])
 
-        # Store feedback and results
+        # Process evaluation results
         for fb, fb_result in records.items():
             results.append({
                 "Context": context,
@@ -93,6 +99,7 @@ def process_excel_data(data: pd.DataFrame) -> pd.DataFrame:
 
     # Convert results into a DataFrame
     return pd.DataFrame(results)
+
 
 
 
