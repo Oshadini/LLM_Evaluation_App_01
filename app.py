@@ -1,94 +1,141 @@
 import streamlit as st
 import pandas as pd
 from trulens_eval.feedback.provider import OpenAI
+from trulens_eval.utils.generated import re_0_10_rating
 from trulens_eval.feedback import prompts
-from trulens_eval import Feedback, Select, Tru
+from trulens_eval import Feedback, Select, Tru, TruChain
+from typing import Optional, Dict, Tuple
 
 
-# Load Trulens feedback class (customized scoring metrics)
+# Load Trulens's Feedback Class
 class CustomFeedback(OpenAI):
     """
-    Custom feedback class extends OpenAI's scoring logic.
-    This is needed to evaluate answers/contexts/questions using Trulens feedback.
+    A custom Trulens feedback function extending OpenAI's functionality for evaluation purposes.
     """
-    def custom_metric_score(self, answer=None, question=None, context=None):
+    def custom_metric_score(
+        self,
+        answer: Optional[str] = None,
+        question: Optional[str] = None,
+        context: Optional[str] = None
+    ) -> Tuple[float, Dict]:
         """
-        Calculate a custom metric score for evaluation.
+        Scoring logic based on relevance.
         """
+        # Generate the scoring prompt using the context, question, and answer data
         if answer and question and context:
-            # Evaluate context + question relevance
-            user_prompt = f"Answer: {answer}\nQuestion: {question}\nContext: {context}\n"
-            result = self.generate_score_and_reasons(prompts.COT_REASONS_TEMPLATE, user_prompt)
-            return result
-        return 0.0, {}
+            user_prompt = f"Prompt: Evaluate the following in terms of relevance:\nAnswer: {answer}\nQuestion: {question}\nContext: {context}\n" + prompts.COT_REASONS_TEMPLATE
+        else:
+            user_prompt = "Prompt: Evaluate the provided data for relevance using a scoring system:\n" + prompts.COT_REASONS_TEMPLATE
+
+        system_prompt = prompts.CONTEXT_RELEVANCE_SYSTEM.replace(
+            "- STATEMENT that is RELEVANT to most of the QUESTION should get a score of 0 - 10.",
+            ""
+        )
+
+        return self.generate_score_and_reasons(system_prompt, user_prompt)
 
 
-# Instantiate feedback mechanism
-feedback_provider = CustomFeedback()
+# Instantiate Trulens Feedback
+custom_feedback = CustomFeedback()
 
 
-# Streamlit App for the main UI
+def process_excel_data(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Processes the uploaded data and performs Trulens evaluation on each row.
+    Returns a DataFrame with results for visualization.
+    """
+    results = []
+    for index, row in data.iterrows():
+        context = row.get("Context", "")
+        question = row.get("Question", "")
+        answer = row.get("Answer", "")
+        ref_context = row.get("Reference Content", "")
+        ref_answer = row.get("Reference Answer", "")
+        
+        # Prepare the Trulens feedback chain
+        f_feedback = Feedback(custom_feedback.custom_metric_score).on(
+            answer=Select.RecordOutput(answer),
+            question=Select.RecordInput(question),
+            context=Select.RecordInput(context)
+        )
+
+        # Use TruChain to capture the evaluation logic
+        tru_chain = TruChain(
+            chain=f_feedback,
+            app_id="trulens_eval_app"
+        )
+        
+        with tru_chain as recording:
+            result = tru_chain.invoke({
+                "answer": answer,
+                "context": context,
+                "question": question
+            })
+            
+        # Fetch Trulens evaluation feedback
+        tru = Tru()
+        records, feedback = tru.get_records_and_feedback(app_ids=[])
+
+        # Store feedback and results
+        for fb, fb_result in records.items():
+            results.append({
+                "Context": context,
+                "Question": question,
+                "Answer": answer,
+                "Reference Context": ref_context,
+                "Reference Answer": ref_answer,
+                "Score": fb_result.result,
+                "Reason": fb_result.calls[0].meta.get("reason", "No reason provided")
+            })
+
+    # Convert results into a DataFrame
+    return pd.DataFrame(results)
+
+
+# Streamlit UI
 st.set_page_config(
-    page_title="Trulens Evaluation UI",
-    page_icon="✅",
-    layout="wide"
+    page_title="Trulens Evaluation",
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
-st.title("Trulens Evaluation - Excel Input Workflow")
-
-st.markdown("""
-Upload an Excel file with `Context`, `Question`, and `Answer`. 
-This will allow Trulens to evaluate them via a custom chain.
+st.title("Trulens Evaluation with Excel Data")
+st.write("""
+Upload an Excel file containing `Context`, `Question`, `Answer`, `Reference Content`, and `Reference Answer`.
+The system will evaluate these pairs using Trulens metrics and generate a results table with scores and explanations.
 """)
 
-# Excel File Upload Section
-uploaded_file = st.file_uploader("Upload your Excel file with columns (Context, Question, Answer):", type=["xlsx", "csv"])
+# File uploader
+uploaded_file = st.file_uploader(
+    "Upload your evaluation data in Excel format:", type=["xlsx", "csv"]
+)
 
 if uploaded_file:
-    # Load the uploaded data into a DataFrame
-    df = pd.read_excel(uploaded_file) if uploaded_file.name.endswith('xlsx') else pd.read_csv(uploaded_file)
+    with st.spinner("Processing uploaded data and running evaluation..."):
+        # Read the uploaded Excel file
+        if uploaded_file.name.endswith(".xlsx"):
+            data = pd.read_excel(uploaded_file)
+        else:
+            data = pd.read_csv(uploaded_file)
 
-    # Ensure the required columns exist
-    if {"Context", "Question", "Answer"}.issubset(df.columns):
-        st.success("Columns detected: Context, Question, Answer")
-        st.write(df)
+        # Check for required columns
+        if all(col in data.columns for col in ["Context", "Question", "Answer", "Reference Content", "Reference Answer"]):
+            # Process uploaded data
+            result_df = process_excel_data(data)
 
-        # Loop through each input pair
-        st.subheader("Evaluating Trulens Feedback Chain...")
-        with st.spinner("Evaluating using Trulens..."):
-            results = []
-            for index, row in df.iterrows():
-                # Wrap string values into Trulens Select Lens
-                context_lens = Select.RecordInput(row['Context'])
-                question_lens = Select.RecordInput(row['Question'])
-                answer_lens = Select.RecordOutput(row['Answer'])
+            # Display results
+            st.subheader("Evaluation Results")
+            st.write(
+                "Below is the evaluation table showing metrics calculated using Trulens feedback."
+            )
+            st.dataframe(result_df)
 
-                # Feedback chain setup
-                f_feedback = Feedback(feedback_provider.custom_metric_score).on(
-                    answer=answer_lens,
-                    question=question_lens,
-                    context=context_lens
-                )
+        else:
+            st.error(
+                "The uploaded file must contain the following columns: `Context`, `Question`, `Answer`, `Reference Content`, `Reference Answer`."
+            )
 
-                # Run Trulens evaluation
-                tru = Tru()
-                with tru as chain:
-                    # Use the 'get' method to resolve lenses safely
-                    chain.invoke({
-                        "answer": answer_lens.get(),
-                        "context": context_lens.get(),
-                        "question": question_lens.get()
-                    })
-
-                    feedback_result = tru.get_records_and_feedback()
-
-                # Extract the results safely
-                st.write(f"Row {index + 1}")
-                st.write(f"Answer: {row['Answer']}")
-                st.write(f"Context: {row['Context']}")
-                st.write(f"Feedback Results: {feedback_result}")
-
-    else:
-        st.error("The uploaded Excel file must contain the columns: Context, Question, and Answer")
 else:
-    st.info("Please upload an Excel file to start the evaluation workflow.")
+    st.info(
+        "Please upload a valid Excel file to evaluate data with Trulens metrics."
+    )
