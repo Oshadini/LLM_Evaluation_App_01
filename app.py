@@ -1,9 +1,10 @@
 import streamlit as st
 import pandas as pd
 from typing import Optional, Dict, Tuple
-from trulens_eval import Feedback, Select, TruSession, App
+from trulens_eval import Feedback, Select
 from trulens_eval.feedback.provider import OpenAI
-
+from trulens.core import TruSession
+from trulens_eval.app import App
 
 # Define a custom provider with a feedback function
 class CustomFeedBackFunction(OpenAI):
