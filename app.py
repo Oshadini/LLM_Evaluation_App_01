@@ -1,72 +1,68 @@
-# app.py
+# Updated code with multi-column selection for metrics
+# File path: app.py
+
 import streamlit as st
 import pandas as pd
 
-# Function to process the metrics
-def calculate_metrics(data, selected_columns, custom_prompt):
-    """Calculate metric scores and explanations based on selected columns and custom prompt."""
-    metric_score = f"Score based on {', '.join(selected_columns)} and prompt: '{custom_prompt}'"
-    explanation = f"Explanation for {', '.join(selected_columns)} using prompt: '{custom_prompt}'"
-    return metric_score, explanation
+# Define the main function for the app
+def main():
+    st.title("Custom Metric Analysis Application")
 
-# Streamlit App
-st.title("Custom Metrics Generator")
+    # File upload section
+    uploaded_file = st.file_uploader("Upload an Excel file", type=["xlsx"])
+    if uploaded_file:
+        # Load the Excel file into a Pandas DataFrame
+        data = pd.read_excel(uploaded_file)
+        st.write("Preview of Uploaded File:")
+        st.dataframe(data)
 
-# File upload section
-uploaded_file = st.file_uploader("Upload an Excel file with the required structure", type=["xlsx"])
-if uploaded_file:
-    # Load the uploaded file into a dataframe
-    df = pd.read_excel(uploaded_file)
-    st.write("Uploaded Data Preview:")
-    st.write(df)
+        # Get column names from the uploaded file
+        columns = list(data.columns)
 
-    # Initialize metrics list
-    metrics = []
+        # User input for metrics
+        st.header("Metric Selection")
+        metrics = {}
 
-    st.sidebar.title("Metrics Configuration")
-    st.sidebar.write("Add multiple metrics by selecting columns and entering prompts.")
+        # Allow user to define up to 5 metrics
+        for i in range(1, 6):
+            st.subheader(f"Metric {i}")
+            selected_columns = st.multiselect(
+                f"Select columns for Metric {i} (You can select multiple):",
+                options=columns,
+                key=f"metric_{i}_columns"
+            )
+            metric_prompt = st.text_input(
+                f"Enter prompt for Metric {i}:",
+                key=f"metric_{i}_prompt"
+            )
+            if selected_columns and metric_prompt:
+                metrics[f"Metric {i}"] = {
+                    "columns": selected_columns,
+                    "prompt": metric_prompt
+                }
 
-    # Number of metrics to configure
-    num_metrics = st.sidebar.number_input("Number of Metrics", min_value=1, value=1, step=1)
+        # Display the selected metrics
+        st.subheader("Selected Metrics:")
+        st.write(metrics)
 
-    for i in range(num_metrics):
-        st.sidebar.subheader(f"Metric {i + 1}")
-        selected_columns = st.sidebar.multiselect(
-            f"Select columns for Metric {i + 1}", options=df.columns.tolist(), key=f"columns_{i}"
-        )
-        custom_prompt = st.sidebar.text_input(
-            f"Custom Prompt for Metric {i + 1}", key=f"prompt_{i}"
-        )
-        if selected_columns and custom_prompt:
-            metrics.append((selected_columns, custom_prompt))
+        # Process and display metric scores and explanations
+        if st.button("Generate Metric Scores"):
+            st.subheader("Metric Scores and Explanations")
+            results = []
+            for metric_name, metric_info in metrics.items():
+                # Placeholder processing for the metric score and explanation
+                score = len(metric_info["columns"]) * 10  # Example score calculation
+                explanation = f"Processed with prompt: {metric_info['prompt']}"
+                results.append({
+                    "Metric": metric_name,
+                    "Selected Columns": ", ".join(metric_info["columns"]),
+                    "Score": score,
+                    "Explanation": explanation
+                })
+            # Convert results to a DataFrame for display
+            results_df = pd.DataFrame(results)
+            st.write(results_df)
 
-    if st.button("Generate Metrics"):
-        # Generate table for metrics
-        result_data = []
-
-        for i, (columns, prompt) in enumerate(metrics):
-            score, explanation = calculate_metrics(df, columns, prompt)
-            result_data.append({
-                "Metric": f"Metric {i + 1}",
-                "Selected Columns": ", ".join(columns),
-                "Custom Prompt": prompt,
-                "Score": score,
-                "Explanation": explanation
-            })
-
-        # Convert result data to DataFrame for display
-        result_df = pd.DataFrame(result_data)
-        st.write("Metric Results:")
-        st.write(result_df)
-
-        # Allow download of results
-        def convert_df_to_csv(df):
-            return df.to_csv(index=False).encode('utf-8')
-
-        csv = convert_df_to_csv(result_df)
-        st.download_button(
-            label="Download Results as CSV",
-            data=csv,
-            file_name="metric_results.csv",
-            mime="text/csv",
-        )
+# Run the app
+if __name__ == "__main__":
+    main()
