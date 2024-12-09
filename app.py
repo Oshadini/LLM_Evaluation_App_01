@@ -5,118 +5,82 @@ from trulens_eval.feedback import prompts
 from trulens_eval import Feedback, Select, Tru
 
 
-# Ensure OpenAI API is available from secrets
-openai_api_key = st.secrets["OPENAI_API_KEY"]
-
-
-class TrulensFeedbackHandler:
+# Load Trulens feedback class (customized scoring metrics)
+class CustomFeedback(OpenAI):
     """
-    Handles feedback logic using only Trulens (no LLMs or extra libraries).
-    Dynamically evaluates prompt-response pairs row-by-row.
+    Custom feedback class extends OpenAI's scoring logic.
+    This is needed to evaluate answers/contexts/questions using Trulens feedback.
     """
-    def __init__(self):
-        # Setup OpenAI if necessary with Trulens
-        self.feedback_provider = OpenAI(api_key=openai_api_key)
-
-    def evaluate_feedback(self, prompt: str, response: str):
+    def custom_metric_score(self, answer=None, question=None, context=None):
         """
-        Evaluates feedback using Trulens based on prompt-response pairs.
-        This function avoids any LLM dependencies.
+        Calculate a custom metric score for evaluation.
         """
-        try:
-            # Create Feedback evaluation
-            feedback = Feedback(self.feedback_provider).on(
-                answer=Select.RecordOutput
-            ).on(
-                question=Select.RecordInput
-            ).on(
-                context=Select.RecordInput
-            )
-
-            # Apply evaluation
-            result = feedback.evaluate(
-                answer=response,
-                question=prompt,
-            )
-            score = result.result
-            explanation = result.meta.get("reason", "Unknown reason.")
-            
-            # Return score and explanation
-            return score, explanation
-        except Exception as e:
-            st.error(f"Error during feedback evaluation: {e}")
-            return 0.0, "Error during feedback evaluation."
+        if answer and question and context:
+            # Evaluate context + question relevance
+            user_prompt = f"Answer: {answer}\nQuestion: {question}\nContext: {context}\n"
+            result = self.generate_score_and_reasons(prompts.COT_REASONS_TEMPLATE, user_prompt)
+            return result
+        return 0.0, {}
 
 
-# Main UI flow for Streamlit
-def main():
-    st.title("Trulens Evaluation with Custom Metrics (Excel Upload)")
+# Instantiate feedback mechanism
+feedback_provider = CustomFeedback()
 
-    uploaded_file = st.file_uploader(
-        "Upload an Excel file for row-based evaluation", type=["xlsx"]
-    )
 
-    if uploaded_file:
-        # Read uploaded Excel into DataFrame
-        try:
-            excel_data = pd.read_excel(uploaded_file)
-            st.write("Uploaded Data:")
-            st.dataframe(excel_data)
+# Streamlit App for the main UI
+st.set_page_config(
+    page_title="Trulens Evaluation UI",
+    page_icon="✅",
+    layout="wide"
+)
 
-            # Input custom prompt for row-based comparison logic
-            user_prompt = st.text_input(
-                "Define your custom prompt for feedback evaluation",
-                placeholder="Enter your feedback prompt logic here"
-            )
+st.title("Trulens Evaluation - Excel Input Workflow")
 
-            if user_prompt and st.button("Evaluate Feedback"):
-                feedback_handler = TrulensFeedbackHandler()
-                results = []
+st.markdown("""
+Upload an Excel file with `Context`, `Question`, and `Answer`. 
+This will allow Trulens to evaluate them via a custom chain.
+""")
 
-                # Process rows dynamically with Trulens evaluation logic
-                for index, row in excel_data.iterrows():
-                    try:
-                        # Combine context dynamically (just as needed row-wise processing)
-                        response_text = " ".join(row.dropna().astype(str))
-                        score, explanation = feedback_handler.evaluate_feedback(
-                            user_prompt, response_text
-                        )
+# Excel File Upload Section
+uploaded_file = st.file_uploader("Upload your Excel file with columns (Context, Question, Answer):", type=["xlsx", "csv"])
 
-                        # Append results
-                        results.append({
-                            "Row Index": index,
-                            "Response": response_text,
-                            "Score": score,
-                            "Explanation": explanation,
-                        })
+if uploaded_file:
+    # Load the uploaded data into a DataFrame
+    df = pd.read_excel(uploaded_file) if uploaded_file.name.endswith('xlsx') else pd.read_csv(uploaded_file)
 
-                    except Exception as e:
-                        st.error(f"Failed to process row {index}: {e}")
-                        continue
+    # Ensure the required columns exist
+    if {"Context", "Question", "Answer"}.issubset(df.columns):
+        st.success("Columns detected: Context, Question, Answer")
+        st.write(df)
 
-                # Visualize results
-                if results:
-                    results_df = pd.DataFrame(results)
-                    st.write("Feedback Results")
-                    st.dataframe(results_df)
+        # Loop through each input pair
+        st.subheader("Evaluating Trulens Feedback Chain...")
+        with st.spinner("Evaluating using Trulens..."):
+            results = []
+            for index, row in df.iterrows():
+                context = row['Context']
+                question = row['Question']
+                answer = row['Answer']
 
-                    # Allow user to download results
-                    csv_data = results_df.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        label="Download Results as CSV",
-                        data=csv_data,
-                        file_name="feedback_results.csv",
-                        mime="text/csv"
-                    )
-                else:
-                    st.warning("No valid results to process.")
-            else:
-                st.info("Please input your custom prompt logic to proceed.")
-        except Exception as e:
-            st.error(f"Error reading the uploaded file: {e}")
+                # Create a feedback mechanism chain for the inputs
+                f_feedback = (
+                    Feedback(feedback_provider.custom_metric_score)
+                    .on(answer=Select.RecordOutput)
+                    .on(question=Select.RecordInput)
+                    .on(context)
+                )
+
+                # Pass the inputs through the chain
+                tru = Tru()
+                with tru as chain:
+                    chain.invoke(question)  # Mocking chain invocation
+                    feedback_result = tru.get_records_and_feedback()
+                
+                st.write(f"Row {index + 1}")
+                st.write(f"Answer: {answer}")
+                st.write(f"Context: {context}")
+                st.write(f"Feedback Results: {feedback_result}")
     else:
-        st.info("Upload an Excel file to get started with evaluation.")
-
-# Trigger the app
-if __name__ == "__main__":
-    main()
+        st.error("The uploaded Excel file must contain the columns: Context, Question, and Answer")
+else:
+    st.info("Please upload an Excel file to start the evaluation workflow.")
