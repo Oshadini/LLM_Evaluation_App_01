@@ -1,147 +1,99 @@
 import streamlit as st
 import pandas as pd
+from trulens_eval import Feedback, Select, Tru, TruChain
 from trulens_eval.feedback.provider import OpenAI
-from trulens_eval.utils.generated import re_0_10_rating
-from trulens_eval import Feedback, TruChain, Tru
 from typing import Optional, Dict, Tuple
+from trulens_eval.app import App
 
+class CustomFeedback:
+    def __init__(self, chain):
+        self.feedbacks = []
+        self.chain = chain
 
+    def add_feedback(self, metric_name, prompt, combination):
+        self.feedbacks.append({"metric_name": metric_name, "prompt": prompt, "combination": combination})
 
-# Load Trulens's Feedback Class
-class CustomFeedback(OpenAI):
-    """
-    A custom Trulens feedback function extending OpenAI's functionality for evaluation purposes.
-    """
-    def custom_metric_score(
-        self,
-        answer: Optional[str] = None,
-        question: Optional[str] = None,
-        context: Optional[str] = None
-    ) -> Tuple[float, Dict]:
-        """
-        Scoring logic based on relevance.
-        """
-        # Generate the scoring prompt using the context, question, and answer data
-        if answer and question and context:
-            user_prompt = f"Prompt: Evaluate the following in terms of relevance:\nAnswer: {answer}\nQuestion: {question}\nContext: {context}\n" + prompts.COT_REASONS_TEMPLATE
-        else:
-            user_prompt = "Prompt: Evaluate the provided data for relevance using a scoring system:\n" + prompts.COT_REASONS_TEMPLATE
+    def evaluate(self, data):
+        results = []
+        for feedback in self.feedbacks:
+            metric_name = feedback["metric_name"]
+            prompt = feedback["prompt"]
+            combination = feedback["combination"]
 
-        system_prompt = prompts.CONTEXT_RELEVANCE_SYSTEM.replace(
-            "- STATEMENT that is RELEVANT to most of the QUESTION should get a score of 0 - 10.",
-            ""
-        )
+            # Generate a custom prompt using the selected combination of inputs
+            input_text = "\n".join([f"{col}: {data[col]}" for col in combination if col in data])
+            full_prompt = f"{prompt}\n\n{input_text}"
 
-        return self.generate_score_and_reasons(system_prompt, user_prompt)
+            # Evaluate using Trulens feedback
+            f_custom_function = (
+                Feedback(Custom_FeedBack(self.chain).custom_metric_score)
+                .on(answer=Select.RecordOutput)
+                .on(question=Select.RecordInput)
+                .on(context=input_text)
+            )
 
+            tru_recorder = TruChain(self.chain, feedbacks=[f_custom_function])
 
-# Instantiate Trulens Feedback
-custom_feedback = CustomFeedback()
+            with tru_recorder as recording:
+                self.chain.invoke(full_prompt)
 
+            # Fetch results
+            record = recording.get()
+            for fb, fb_result in record.wait_for_feedback_results().items():
+                if fb.name == "custom_metric_score":
+                    results.append({
+                        "metric": metric_name,
+                        "score": fb_result.result,
+                        "explanation": fb_result.calls[0].meta.get("reason", "No explanation provided")
+                    })
 
-from trulens_eval.feedback import Feedback
+        return results
 
-
-def process_excel_data(data: pd.DataFrame) -> pd.DataFrame:
-    """
-    Processes the uploaded data and performs Trulens evaluation on each row.
-    Returns a DataFrame with results for visualization.
-    """
-    results = []
-    for index, row in data.iterrows():
-        context = row.get("Context", "")
-        question = row.get("Question", "")
-        answer = row.get("Answer", "")
-        ref_context = row.get("Reference Content", "")
-        ref_answer = row.get("Reference Answer", "")
+class Custom_FeedBack(OpenAI):
+    def custom_metric_score(self, answer: Optional[str] = None, question: Optional[str] = None, context: Optional[any] = None) -> Tuple[float, Dict]:
+        professional_prompt = f"where 0 is not at all related and 10 is extremely related:\n\n"
         
-        # Configure feedback using Trulens's OpenAI feedback mechanism
-        feedback_function = Feedback(OpenAI().custom_metric_score).on(
-            answer=lambda x: answer,
-            question=lambda x: question,
-            context=lambda x: context
-        )
+        if answer:
+            professional_prompt += f"Answer: {answer}\n"
+        if question:
+            professional_prompt += f"Question: {question}\n"
+        if context:
+            professional_prompt += f"Context: {context}\n"
 
-        # Set up TruChain for evaluation
-        tru_chain = TruChain(
-            chain=feedback_function,
-            app_id="trulens_eval_app"
-        )
+        user_prompt = professional_prompt
+        return self.generate_score_and_reasons(system_prompt="RELEVANCE", user_prompt=user_prompt)
 
-        # Run evaluation
-        with tru_chain as recording:
-            result = tru_chain.invoke({
-                "answer": answer,
-                "context": context,
-                "question": question
-            })
+st.set_page_config(page_title="Custom Metrics Evaluation", page_icon="📊", layout="wide")
+st.title("Custom Metrics Evaluation")
 
-        # Collect feedback
-        tru = Tru()
-        records, feedback = tru.get_records_and_feedback(app_ids=[])
-
-        for fb, fb_result in records.items():
-            results.append({
-                "Context": context,
-                "Question": question,
-                "Answer": answer,
-                "Reference Context": ref_context,
-                "Reference Answer": ref_answer,
-                "Score": fb_result.result,
-                "Reason": fb_result.calls[0].meta.get("reason", "No reason provided")
-            })
-
-    # Convert results into a DataFrame
-    return pd.DataFrame(results)
-
-
-
-
-
-# Streamlit UI
-st.set_page_config(
-    page_title="Trulens Evaluation",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
-
-st.title("Trulens Evaluation with Excel Data")
-st.write("""
-Upload an Excel file containing `Context`, `Question`, `Answer`, `Reference Content`, and `Reference Answer`.
-The system will evaluate these pairs using Trulens metrics and generate a results table with scores and explanations.
-""")
-
-# File uploader
-uploaded_file = st.file_uploader(
-    "Upload your evaluation data in Excel format:", type=["xlsx", "csv"]
-)
-
+uploaded_file = st.file_uploader("Upload an Excel file", type=["xlsx"])
 if uploaded_file:
-    with st.spinner("Processing uploaded data and running evaluation..."):
-        # Read the uploaded Excel file
-        if uploaded_file.name.endswith(".xlsx"):
-            data = pd.read_excel(uploaded_file)
-        else:
-            data = pd.read_csv(uploaded_file)
+    data = pd.read_excel(uploaded_file)
+    st.write("File Loaded:")
+    st.dataframe(data)
 
-        # Check for required columns
-        if all(col in data.columns for col in ["Context", "Question", "Answer", "Reference Content", "Reference Answer"]):
-            # Process uploaded data
-            result_df = process_excel_data(data)
+    # User input: Number of metrics
+    num_metrics = st.number_input("How many metrics do you want to define?", min_value=1, max_value=10, step=1)
 
-            # Display results
-            st.subheader("Evaluation Results")
-            st.write(
-                "Below is the evaluation table showing metrics calculated using Trulens feedback."
-            )
-            st.dataframe(result_df)
+    chain = OpenAI(model="gpt-4o", openai_api_key=st.secrets["OPENAI_API_KEY"], max_tokens=1024)
+    feedback = CustomFeedback(chain)
 
-        else:
-            st.error(
-                "The uploaded file must contain the following columns: `Context`, `Question`, `Answer`, `Reference Content`, `Reference Answer`."
-            )
+    metric_tabs = st.tabs([f"Metric {i+1}" for i in range(num_metrics)])
+    for i, tab in enumerate(metric_tabs):
+        with tab:
+            st.subheader(f"Define Metric {i+1}")
+            metric_name = st.text_input(f"Metric Name for Metric {i+1}")
+            columns = st.multiselect(f"Select input combinations for Metric {i+1}", options=data.columns)
+            custom_prompt = st.text_area(f"Custom Prompt for Metric {i+1}")
+            feedback.add_feedback(metric_name, custom_prompt, columns)
 
-else:
-    st.info(
-        "Please upload a valid Excel file to evaluate data with Trulens metrics."
-    )
+    if st.button("Evaluate Metrics"):
+        st.subheader("Evaluation Results")
+        for index, row in data.iterrows():
+            results = feedback.evaluate(row.to_dict())
+            st.markdown(f"### Row {index + 1} Results")
+            for result in results:
+                st.write(f"**Metric:** {result['metric']}")
+                st.write(f"**Score:** {result['score']}")
+                st.write(f"**Explanation:** {result['explanation']}")
+                st.divider()
