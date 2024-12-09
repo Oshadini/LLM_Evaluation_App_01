@@ -50,20 +50,23 @@ from langchain.chains.base import Chain
 
 from langchain.chains.base import Chain
 
+from langchain.chains.base import Chain
+from typing import Dict
+
 class CustomChain(Chain):
     """
     A simple chain wrapper around ChatOpenAI to work with TruChain.
     """
     def __init__(self, llm):
         super().__init__()
-        self.llm = llm  # Assign the llm argument to an instance variable
+        self.llm = llm  # Assign the LLM object to an instance attribute.
 
     @property
-    def input_keys(self):
+    def input_keys(self) -> list:
         return ["input"]
 
     @property
-    def output_keys(self):
+    def output_keys(self) -> list:
         return ["response"]
 
     def _call(self, inputs: Dict[str, str]) -> Dict[str, str]:
@@ -77,7 +80,7 @@ class CustomChain(Chain):
             Dict[str, str]: A dictionary containing the response under the "response" key.
         """
         prompt = inputs["input"]
-        response = self.llm.invoke(prompt)  # Call the LLM's invoke method
+        response = self.llm.invoke(prompt)  # Call the LLM's `invoke` method.
         return {"response": response}
 
 
