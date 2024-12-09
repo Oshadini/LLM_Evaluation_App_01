@@ -83,18 +83,19 @@ class CustomFeedback:
             # Generate input text for the feedback function
             try:
                 input_text = "\n".join([f"{col}: {data_row[col]}" for col in combination if col in data_row])
+
                 # Invoke feedback function
-                result = feedback_function(input_text)
-                
-                # Handle reasoning for results if available
-                explanation = "Processed successfully" if isinstance(result, float) else "Invalid result type"
-                if isinstance(result, tuple):  # Assuming reasoning tuple
-                    explanation = result[1].get("reason", "No reason provided")
-                    result_score = result[0]
+                feedback_result = feedback_function(input_text)
+
+                # Extract feedback and reasoning directly from Trulens response
+                if hasattr(feedback_result, "calls") and feedback_result.calls:
+                    meta = feedback_result.calls[0].meta
+                    explanation = meta.get("reason", "No reasoning provided")
+                    result_score = feedback_result.result
                 else:
-                    result_score = result
-                    explanation = "Processed successfully"
-                
+                    explanation = "No reasoning available"
+                    result_score = feedback_result
+
                 results.append({
                     "metric": feedback["metric_name"],
                     "score": result_score,
