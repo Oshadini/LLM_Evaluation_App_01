@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from trulens_eval.feedback import Feedback, Select, Tru, TruChain
+from trulens_eval import Feedback, Select, Tru, TruChain
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.schema import StrOutputParser
 from langchain.runnables import RunnablePassthrough
