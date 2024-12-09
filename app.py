@@ -1,26 +1,13 @@
 from trulens_eval.app import App
+from trulens_eval.feedback.provider import OpenAI
 import streamlit as st
 import pandas as pd
-from typing import Optional, Dict, Tuple
-from trulens_eval import Feedback, Select, Tru, TruChain
-from trulens_eval.feedback.provider import OpenAI
+from typing import Dict, Any
 
-
-# Import your custom module here
-import my_module  # <-- Import your actual module here instead of a string
-
-class Custom_FeedBack(OpenAI):
-    def custom_metric_score(self, answer: Optional[str] = None, question: Optional[str] = None, context: Optional[any] = None) -> Tuple[float, Dict]:
+class CustomFeedback(OpenAI):
+    def custom_metric_score(self, answer: str = None, question: str = None, context: Any = None) -> tuple:
         """
-        A function that evaluates the relevance of an answer, question, and context.
-
-        Args:
-            answer (str): An answer being evaluated.
-            question (str): A question being evaluated.
-            context (str): Context for the evaluation.
-
-        Returns:
-            float: A value between 0 and 1 indicating relevance.
+        Example custom feedback scoring function.
         """
         professional_prompt = """
         Rate the relevance on a scale from 0 (not at all related) to 10 (extremely related):
@@ -37,77 +24,78 @@ class Custom_FeedBack(OpenAI):
             user_prompt=professional_prompt
         )
 
-standalone = Custom_FeedBack()
+
+# Instantiate Custom Feedback
+standalone = CustomFeedback()
+
+# Initialize App
+app = App(
+    name="your_module_path_here",  # Replace this with your actual module's logic
+    module="your_module_path_here",
+)
+
 st.set_page_config(
     page_title="Evaluate with Custom Metrics",
     page_icon="📊",
     layout="wide",
 )
-st.title("Evaluate with Custom Metrics")
 
-# Upload an Excel file
-uploaded_file = st.file_uploader("Upload an Excel file with 'Question', 'Answer', and 'Context' columns", type=["xlsx"])
+st.title("Evaluate with Custom Metrics")
+uploaded_file = st.file_uploader("Upload Excel with 'Question', 'Answer', and 'Context' columns", type=["xlsx"])
+
 if uploaded_file:
     data = pd.read_excel(uploaded_file)
     st.write("Uploaded Data:")
     st.dataframe(data)
 
-    # Ensure required columns are present
     required_columns = ["Question", "Answer", "Context"]
     if not all(col in data.columns for col in required_columns):
-        st.error(f"The uploaded file must contain the following columns: {', '.join(required_columns)}")
+        st.error(f"Excel must include these columns: {', '.join(required_columns)}")
     else:
-        st.subheader("Custom Metric Evaluation")
-
-        # Initialize App with a valid imported module reference
-        app = App(
-            root_class={
-                "name": "my_custom_metric",
-                "module": my_module  # Pass the actual imported module, NOT a string
-            }
-        )
-
-        # Iterate over each row and evaluate
+        st.subheader("Evaluations:")
         results = []
+
+        # Loop over rows from uploaded data
         for index, row in data.iterrows():
             question = row.get("Question")
             answer = row.get("Answer")
             context = row.get("Context")
+            
+            # Dynamically prepare context
+            # Wrap the context in a dictionary-like format expected by `select_context`
+            context_dict = {"context": context}
 
-            # Use App.select_context() to dynamically create a Lens for context
-            selected_context = app.select_context(context)  # Transform the string into a proper Lens
+            # Select context dynamically using the provided context
+            with app.select_context(context_dict) as dynamic_context:
+                # Feed dynamic context into a custom feedback chain
+                f_custom_function = (
+                    Feedback(standalone.custom_metric_score)
+                    .on(answer=Select.RecordOutput)
+                    .on(question=Select.RecordInput)
+                    .on(context=dynamic_context)
+                )
 
-            # Define feedback function with the selected Lens for context
-            f_custom_function = (
-                Feedback(standalone.custom_metric_score)
-                .on(answer=Select.RecordOutput)
-                .on(question=Select.RecordInput)
-                .on(context=selected_context)  # Pass the context as a Lens
-            )
+                # Simulate a chain feedback loop
+                tru_recorder = TruChain(chain=None, feedbacks=[f_custom_function])
 
-            # Simulate chain and record evaluation
-            tru_recorder = TruChain(chain=None, feedbacks=[f_custom_function])
+                with tru_recorder as recording:
+                    llm_response = f"Simulated Response to Question {question}"
 
-            with tru_recorder as recording:
-                # Simulating a response
-                llm_response = f"Simulated Response for Question: {question}"
-                recording.record_output(llm_response)
+                # Fetch results
+                record = recording.get()
+                for feedback, feedback_result in record.wait_for_feedback_results().items():
+                    if feedback.name == "custom_metric_score":
+                        results.append({
+                            "Row": index + 1,
+                            "Score": feedback_result.result,
+                            "Reason": feedback_result.calls[0].meta.get("reason", "No explanation provided")
+                        })
 
-            # Fetch feedback results
-            record = recording.get()
-            for feedback, feedback_result in record.wait_for_feedback_results().items():
-                if feedback.name == "custom_metric_score":
-                    results.append({
-                        "Row": index + 1,
-                        "Score": feedback_result.result,
-                        "Reason": feedback_result.calls[0].meta.get("reason", "No explanation provided")
-                    })
-
-        # Display results
+        # Present results in the Streamlit app
         for result in results:
             st.markdown(f"### Row {result['Row']} Results")
             st.write(f"**Score:** {result['Score']}")
             st.write(f"**Reason:** {result['Reason']}")
             st.divider()
 else:
-    st.info("Please upload an Excel file to proceed.")
+    st.info("Upload a valid Excel file to begin.")
