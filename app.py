@@ -3,21 +3,20 @@
 import streamlit as st
 import pandas as pd
 import openai
-from trulens_eval import Tru, TruChain, Feedback
-from trulens_eval.runnable import Runnable
+from trulens_eval import Tru, TruChain
 from trulens_eval.feedback.provider import OpenAI as TruOpenAI
 
 
 # Initialize OpenAI and TruLens
 openai.api_key = st.secrets["OPENAI_API_KEY"]
-tru_openai_runnable = TruOpenAI(api_key=openai.api_key)  # Wrap OpenAI instance as a Runnable
+tru_openai = TruOpenAI(api_key=openai.api_key)  # Initialize the TruOpenAI feedback object
 tru = Tru()
-tru_chain = TruChain(tru_openai_runnable)  # Pass the runnable TruOpenAI instance here
+tru_chain = TruChain(steps=[tru_openai])  # Pass the TruOpenAI directly to TruChain
 
 
 class CustomFeedback:
     def __init__(self):
-        self.tru_chain = tru_chain  # Use the wrapped TruChain object
+        self.tru_chain = tru_chain  # Use the TruChain feedback pipeline
 
     def evaluate_prompt(self, prompt: str, generated: str) -> (float, str):
         """
@@ -26,22 +25,21 @@ class CustomFeedback:
         :param generated: The GPT-generated response text.
         :return: A score and explanation derived from TruLens feedback.
         """
-        # Evaluate feedback using TruLens tools
         try:
-            # Pass context to the TruChain pipeline and get feedback evaluation
+            # Evaluate feedback using TruChain
             feedback_result = self.tru_chain.invoke({"prompt": prompt, "response": generated})
             
-            # Extract the score and explanation
-            score = feedback_result["score"] if "score" in feedback_result else 0.0
-            explanation = feedback_result.get("explanation", "No explanation provided")
+            # Extract the score and explanation from feedback
+            score = feedback_result.feedback_score if feedback_result else 0.0
+            explanation = feedback_result.explanation if feedback_result else "No explanation provided"
 
-            # Ensure the score is between 0-1
+            # Ensure the score is valid within [0,1]
             if 0 <= score <= 1:
                 return score, explanation
             else:
-                return 0.0, "Score outside expected range."
+                return 0.0, "Score is out of expected range."
         except Exception as e:
-            st.error(f"TruLens evaluation error: {e}")
+            st.error(f"Error with TruLens evaluation: {e}")
             return 0.0, f"Error with TruLens evaluation: {str(e)}"
 
 
