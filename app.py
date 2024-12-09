@@ -1,93 +1,72 @@
 # app.py
 import streamlit as st
 import pandas as pd
-import openai
-import os
-from io import BytesIO
 
-# Set your OpenAI API key
-openai.api_key = "YOUR_OPENAI_API_KEY"
+# Function to process the metrics
+def calculate_metrics(data, selected_columns, custom_prompt):
+    """Calculate metric scores and explanations based on selected columns and custom prompt."""
+    metric_score = f"Score based on {', '.join(selected_columns)} and prompt: '{custom_prompt}'"
+    explanation = f"Explanation for {', '.join(selected_columns)} using prompt: '{custom_prompt}'"
+    return metric_score, explanation
 
-# Page Config
-st.set_page_config(
-    page_title="Metric Scoring App",
-    layout="wide"
-)
+# Streamlit App
+st.title("Custom Metrics Generator")
 
-st.title("Metric Scoring App")
-st.write("Upload an Excel file, define custom metrics, and compute scores with explanations.")
-
-# Step 1: File Upload
-uploaded_file = st.file_uploader("Upload an Excel file", type=["xlsx", "xls"])
-
+# File upload section
+uploaded_file = st.file_uploader("Upload an Excel file with the required structure", type=["xlsx"])
 if uploaded_file:
-    # Read the uploaded Excel file
-    try:
-        df = pd.read_excel(uploaded_file)
-        st.write("### Uploaded Data")
-        st.dataframe(df)
-        columns = list(df.columns)
+    # Load the uploaded file into a dataframe
+    df = pd.read_excel(uploaded_file)
+    st.write("Uploaded Data Preview:")
+    st.write(df)
 
-        # Step 2: Metric Configuration
-        st.write("### Define Custom Metrics")
-        metric_definitions = []
+    # Initialize metrics list
+    metrics = []
 
-        col1, col2 = st.columns(2)
+    st.sidebar.title("Metrics Configuration")
+    st.sidebar.write("Add multiple metrics by selecting columns and entering prompts.")
 
-        with col1:
-            num_metrics = st.number_input(
-                "Number of metrics to define",
-                min_value=1,
-                max_value=10,
-                step=1,
-                value=1
-            )
-        
-        for i in range(num_metrics):
-            st.write(f"#### Metric {i + 1}")
-            metric_col = st.selectbox(f"Select Column for Metric {i + 1}", options=columns, key=f"metric_col_{i}")
-            metric_prompt = st.text_area(f"Enter Custom Prompt for Metric {i + 1}", key=f"metric_prompt_{i}")
-            metric_definitions.append({"column": metric_col, "prompt": metric_prompt})
+    # Number of metrics to configure
+    num_metrics = st.sidebar.number_input("Number of Metrics", min_value=1, value=1, step=1)
 
-        if st.button("Compute Metrics"):
-            # Step 3: Compute Metrics
-            results = []
-            for metric in metric_definitions:
-                selected_column = metric["column"]
-                prompt_template = metric["prompt"]
+    for i in range(num_metrics):
+        st.sidebar.subheader(f"Metric {i + 1}")
+        selected_columns = st.sidebar.multiselect(
+            f"Select columns for Metric {i + 1}", options=df.columns.tolist(), key=f"columns_{i}"
+        )
+        custom_prompt = st.sidebar.text_input(
+            f"Custom Prompt for Metric {i + 1}", key=f"prompt_{i}"
+        )
+        if selected_columns and custom_prompt:
+            metrics.append((selected_columns, custom_prompt))
 
-                st.write(f"Processing Metric for column `{selected_column}`...")
-                for index, text in enumerate(df[selected_column].dropna()):
-                    response = openai.Completion.create(
-                        engine="text-davinci-003",
-                        prompt=f"{prompt_template}\nText: {text}",
-                        max_tokens=100
-                    )
-                    explanation = response.choices[0].text.strip()
-                    score = response.choices[0].logprobs.total_logprob  # Example placeholder, customize as needed
+    if st.button("Generate Metrics"):
+        # Generate table for metrics
+        result_data = []
 
-                    results.append({
-                        "Metric": metric["prompt"],
-                        "Text": text,
-                        "Score": score,
-                        "Explanation": explanation
-                    })
-            
-            # Convert results to DataFrame
-            results_df = pd.DataFrame(results)
-            st.write("### Metric Results")
-            st.dataframe(results_df)
+        for i, (columns, prompt) in enumerate(metrics):
+            score, explanation = calculate_metrics(df, columns, prompt)
+            result_data.append({
+                "Metric": f"Metric {i + 1}",
+                "Selected Columns": ", ".join(columns),
+                "Custom Prompt": prompt,
+                "Score": score,
+                "Explanation": explanation
+            })
 
-            # Step 4: Export Results
-            st.write("### Export Results")
-            buffer = BytesIO()
-            results_df.to_excel(buffer, index=False, engine='openpyxl')
-            buffer.seek(0)
-            st.download_button(
-                label="Download Results as Excel",
-                data=buffer,
-                file_name="metric_results.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-    except Exception as e:
-        st.error(f"Error processing file: {e}")
+        # Convert result data to DataFrame for display
+        result_df = pd.DataFrame(result_data)
+        st.write("Metric Results:")
+        st.write(result_df)
+
+        # Allow download of results
+        def convert_df_to_csv(df):
+            return df.to_csv(index=False).encode('utf-8')
+
+        csv = convert_df_to_csv(result_df)
+        st.download_button(
+            label="Download Results as CSV",
+            data=csv,
+            file_name="metric_results.csv",
+            mime="text/csv",
+        )
