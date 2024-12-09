@@ -6,6 +6,9 @@ from trulens_eval import Feedback, Select, Tru, TruChain
 from trulens_eval.feedback.provider import OpenAI
 
 
+# Import your custom module here
+import my_module  # <-- Import your actual module here instead of a string
+
 class Custom_FeedBack(OpenAI):
     def custom_metric_score(self, answer: Optional[str] = None, question: Optional[str] = None, context: Optional[any] = None) -> Tuple[float, Dict]:
         """
@@ -56,11 +59,11 @@ if uploaded_file:
     else:
         st.subheader("Custom Metric Evaluation")
 
-        # Initialize App with the required parameters
+        # Initialize App with a valid imported module reference
         app = App(
             root_class={
-                "name": "my_custom_metric",  # Example name for identification
-                "module": "your_module_path_here"  # Replace with your actual module path
+                "name": "my_custom_metric",
+                "module": my_module  # Pass the actual imported module, NOT a string
             }
         )
 
