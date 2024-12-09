@@ -15,5 +15,5 @@ bs4
 tiktoken
 tenacity==8.3.0
 trulens
-
+openpyxl
 
