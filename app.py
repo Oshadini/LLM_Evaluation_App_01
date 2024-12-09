@@ -37,7 +37,7 @@ class CustomFeedback:
         try:
             # Call OpenAI's GPT model
             response = openai.chat.completions.create(
-                model="gpt-4",
+                model="gpt-4o",
                 messages=[
                     {"role": "system", "content": "You are a content evaluator AI."},
                     {"role": "user", "content": scoring_prompt},
@@ -123,7 +123,7 @@ def main():
                         # Generate OpenAI response
                         try:
                             openai_response = openai.chat.completions.create(
-                                model="gpt-4",
+                                model="gpt-4o",
                                 messages=[
                                     {"role": "system", "content": "You are an assistant evaluating relevance."},
                                     {"role": "user", "content": f"{metric_info['prompt']} Context: {combined_context}"}
