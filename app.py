@@ -23,6 +23,8 @@ def load_excel(file):
 
 # Custom feedback implementation
 # Custom feedback implementation
+import json
+
 class CustomFeedback:
     def __init__(self):
         self.feedbacks = []
@@ -43,21 +45,23 @@ class CustomFeedback:
             # Placeholder model inference
             result = model.invoke(full_prompt)
 
-            # Parse AIMessage content
+            # Safely parse AIMessage content
             if hasattr(result, 'content'):
+                response_content = result.content
                 try:
-                    # Assuming the content is JSON
-                    parsed_result = eval(result.content)  # Consider using `json.loads` if JSON format
+                    # Try parsing as JSON
+                    parsed_result = json.loads(response_content)
                     results.append({
                         "metric": feedback["metric_name"],
                         "score": parsed_result.get("score", "N/A"),
                         "explanation": parsed_result.get("reason", "No explanation provided"),
                     })
-                except Exception as e:
+                except json.JSONDecodeError:
+                    # Handle non-JSON plain text responses
                     results.append({
                         "metric": feedback["metric_name"],
-                        "score": "Error",
-                        "explanation": f"Error parsing result: {e}",
+                        "score": "N/A",
+                        "explanation": f"Plain text response: {response_content}",
                     })
             else:
                 results.append({
@@ -66,6 +70,7 @@ class CustomFeedback:
                     "explanation": "Invalid response format",
                 })
         return results
+
 
 
 # Streamlit UI
