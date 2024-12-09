@@ -86,8 +86,8 @@ def main():
                 # Generate OpenAI response for the metric prompt
                 # Generate OpenAI response for the metric prompt using the new API
                 try:
-                    response = openai.chat.completions.create(
-                        model = "gpt-4o",
+                    response = openai.ChatCompletion.create(
+                        model="gpt-4",
                         messages=[
                             {"role": "system", "content": "You are an assistant that evaluates content quality."},
                             {"role": "user", "content": metric_info['prompt']}
@@ -95,9 +95,11 @@ def main():
                         max_tokens=100,
                         temperature=0.7
                     )
-                    generated_text = response['choices'][0]['message']['content'].strip()
+                    # Correctly access the generated content
+                    generated_text = response.choices[0].message["content"].strip()
                 except Exception as e:
                     generated_text = f"Error generating response: {e}"
+
 
 
 
