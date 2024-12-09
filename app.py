@@ -1,4 +1,4 @@
-# Updated code with multi-column selection for metrics
+# Updated code with user-defined number of metrics
 # File path: app.py
 
 import streamlit as st
@@ -19,12 +19,14 @@ def main():
         # Get column names from the uploaded file
         columns = list(data.columns)
 
-        # User input for metrics
+        # User input for metrics count
         st.header("Metric Selection")
+        num_metrics = st.number_input("Enter the number of metrics you want to define:", min_value=1, step=1, value=1)
+
         metrics = {}
 
-        # Allow user to define up to 5 metrics
-        for i in range(1, 6):
+        # Allow user to define a custom number of metrics
+        for i in range(1, num_metrics + 1):
             st.subheader(f"Metric {i}")
             selected_columns = st.multiselect(
                 f"Select columns for Metric {i} (You can select multiple):",
