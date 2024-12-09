@@ -135,19 +135,11 @@ def main():
                         except Exception as e:
                             response_text = f"API error: {e}"
 
-                        # Evaluate relevance and score using CustomFeedback logic
-                        score, explanation = CustomFeedback.evaluate_prompt(
-                            prompt=metric_info['prompt'],
-                            generated=response_text
-                        )
-
-                        # Log result
+                        # Log result without including score or explanation
                         results.append({
                             "Metric": metric_name,
                             "Context": combined_context,
-                            "Generated Response": response_text,
-                            "Score": score,
-                            "Explanation": explanation
+                            "Generated Response": response_text
                         })
 
                     # Convert results to DataFrame for visualization
