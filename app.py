@@ -13,56 +13,39 @@ tru = Tru()
 feedback_provider = TruOpenAI(api_key=openai.api_key)
 
 
+# Custom TruLens feedback evaluation logic
 class CustomFeedback:
-    @staticmethod
-    def evaluate_prompt(prompt: str, generated: str) -> float:
+    def __init__(self):
+        self.tru = Tru()
+        self.tru_chain = TruChain(feedback_provider)
+
+    def evaluate_prompt(self, prompt: str, generated: str) -> (float, str):
         """
-        Evaluates the generated response relevance by comparing it with a prompt.
-        Uses OpenAI scoring model for scoring similarity to provide feedback with an explanation.
-        Returns a value between 0-1.
+        Evaluate the generated response using TruLens for scoring and explanation.
+        :param prompt: The initial prompt used for context.
+        :param generated: The GPT-generated response text.
+        :return: A score and explanation derived from TruLens feedback.
         """
-        # Construct a scoring prompt that directly asks OpenAI to return a relevance score.
-        # Chain-of-thought prompt strategy
-        scoring_prompt = f"""
-        Evaluate how relevant the generated response is to the provided prompt.
-        Rate on a scale from 0 (not at all relevant) to 1 (extremely relevant).
-        
-        Prompt: {prompt}
-        Generated Response: {generated}
-        
-        Please provide:
-        1. A score between 0 and 1.
-        2. A detailed explanation of why you gave this score.
-        """
+        # Evaluate feedback using TruLens tools
         try:
-            # Call OpenAI's GPT model
-            response = openai.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": "You are a content evaluator AI."},
-                    {"role": "user", "content": scoring_prompt},
-                ],
-                max_tokens=200,
-                temperature=0.7,
+            # Perform evaluation using TruChain
+            feedback = self.tru_chain.evaluate_single_feedback(
+                prompt=prompt,
+                generated=generated
             )
 
-            # Parse the response
-            generated_feedback = response.choices[0].message.content.strip()
-            # Extract the first number from the response (the score) for evaluation purposes.
-            try:
-                # Extract numerical score from response (we assume it's at the beginning).
-                score_str = generated_feedback.split()[0]
-                score = float(score_str)
-                # Ensure score is valid between 0 and 1
-                if 0 <= score <= 1:
-                    return score, generated_feedback
-                else:
-                    return 0.0, "Score out of expected range (0-1)."
-            except Exception:
-                return 0.0, f"Could not parse numerical score from: {generated_feedback}"
+            # Extract score and explanation
+            score = feedback.feedback_score  # Numeric score
+            explanation = feedback.explanation  # Feedback explanation text
+
+            # Ensure score is valid within [0,1]
+            if 0 <= score <= 1:
+                return score, explanation
+            else:
+                return 0.0, "Invalid feedback score range"
         except Exception as e:
-            st.error(f"OpenAI API error: {e}")
-            return 0.0, f"Error due to API response: {str(e)}"
+            st.error(f"Error with TruLens evaluation: {e}")
+            return 0.0, f"Error with TruLens evaluation: {str(e)}"
 
 
 # Define the main function for the Streamlit app
@@ -111,6 +94,7 @@ def main():
         if st.button("Evaluate Metrics"):
             st.subheader("Processing Metrics...")
             results = []
+            feedback_engine = CustomFeedback()
 
             for metric_name, metric_info in metrics.items():
                 try:
@@ -135,11 +119,19 @@ def main():
                         except Exception as e:
                             response_text = f"API error: {e}"
 
-                        # Log result without including score or explanation
+                        # Evaluate using TruLens (feedback pipeline)
+                        score, explanation = feedback_engine.evaluate_prompt(
+                            prompt=metric_info['prompt'],
+                            generated=response_text
+                        )
+
+                        # Log result
                         results.append({
                             "Metric": metric_name,
                             "Context": combined_context,
-                            "Generated Response": response_text
+                            "Generated Response": response_text,
+                            "Score": score,
+                            "Explanation": explanation
                         })
 
                     # Convert results to DataFrame for visualization
