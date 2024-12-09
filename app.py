@@ -3,13 +3,36 @@
 import streamlit as st
 import pandas as pd
 import openai
-from trulens_eval import Feedback, Tru
-from trulens_eval.feedback import FeedbackType
+from trulens_eval import Tru, TruChain, Feedback
+from trulens_eval.feedback.provider import OpenAI as TruOpenAI
 
-# Initialize TruLens and Feedback
-tru = Tru()
+# Initialize TruLens and OpenAI Feedback
 openai.api_key = "your_openai_api_key"  # Replace with your OpenAI API key
-feedback = Feedback()
+tru = Tru()
+feedback_provider = TruOpenAI(api_key=openai.api_key)
+
+# Define custom feedback function
+class CustomFeedback:
+    @staticmethod
+    def evaluate_prompt(prompt: str, generated: str) -> float:
+        """
+        Custom feedback function for evaluating the generated output based on the prompt.
+        Returns a score between 0 and 1.
+        """
+        feedback_prompt = f"""
+        Evaluate the following response for relevance and correctness based on the prompt:
+        - Prompt: {prompt}
+        - Generated Response: {generated}
+        
+        Score (0-1): 
+        """
+        try:
+            result = feedback_provider.exact_match(prompt, generated)
+            return result
+        except Exception as e:
+            st.warning(f"Feedback evaluation error: {e}")
+            return 0.0
+
 
 # Define the main function for the app
 def main():
@@ -69,27 +92,33 @@ def main():
                         stop=None,
                         temperature=0.7
                     )
-                    explanation = response.choices[0].text.strip()
+                    generated_text = response.choices[0].text.strip()
                 except Exception as e:
-                    explanation = f"Error generating response: {e}"
+                    generated_text = f"Error generating response: {e}"
 
-                # Evaluate the explanation with TruLens Feedback
-                try:
-                    score = feedback.exact_match(metric_info['prompt'], explanation)
-                except Exception as e:
-                    score = f"Error in feedback evaluation: {e}"
+                # Evaluate the generated text using custom feedback
+                score = CustomFeedback.evaluate_prompt(metric_info['prompt'], generated_text)
 
                 # Append the result
                 results.append({
                     "Metric": metric_name,
                     "Selected Columns": ", ".join(metric_info["columns"]),
                     "Score": score,
-                    "Explanation": explanation
+                    "Explanation": generated_text
                 })
 
             # Convert results to a DataFrame for display
             results_df = pd.DataFrame(results)
             st.write(results_df)
+
+            # Allow the user to download the results
+            csv_data = results_df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="Download Results as CSV",
+                data=csv_data,
+                file_name="metric_results.csv",
+                mime="text/csv"
+            )
 
 
 # Run the app
