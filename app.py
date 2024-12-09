@@ -57,12 +57,15 @@ def manage_feedback(row_data: Dict[str, str], feedback: Feedback):
     Returns:
         Dict: Feedback evaluation results including score and reasoning.
     """
-    tru_recorder = TruChain(chain=None, app_id='C', feedbacks=[feedback])
+    # Use a valid chain/application instead of `None`
+    app = ChatOpenAI(model="gpt-4o", openai_api_key=st.secrets["OPENAI_API_KEY"], max_tokens=1024)
+    
+    tru_recorder = TruChain(app=app, app_id='C', feedbacks=[feedback])
 
     with tru_recorder as recording:
         # Combine all selected columns into a single prompt
         prompt = "\n".join([f"{key}: {value}" for key, value in row_data.items() if value])
-        llm_response = ChatOpenAI(model="gpt-4o", openai_api_key=st.secrets["OPENAI_API_KEY"]).invoke(prompt)
+        llm_response = app.invoke(prompt)
 
     rec = recording.get()
 
@@ -75,6 +78,7 @@ def manage_feedback(row_data: Dict[str, str], feedback: Feedback):
         }
 
     return feedback_results
+
 
 # Streamlit App Configuration
 st.set_page_config(
