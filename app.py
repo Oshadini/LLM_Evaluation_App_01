@@ -4,8 +4,7 @@ from trulens_eval.feedback.provider import OpenAI
 from trulens_eval.utils.generated import re_0_10_rating
 from trulens_eval import Feedback, TruChain, Tru
 from typing import Optional, Dict, Tuple
-# Instantiate Trulens Feedback
-custom_feedback = CustomFeedback()
+
 
 
 from trulens_eval.feedback import Feedback
@@ -79,7 +78,8 @@ class CustomFeedback:
 
 
 
-
+# Instantiate Trulens Feedback
+custom_feedback = CustomFeedback()
 
 
 def process_excel_data(data: pd.DataFrame) -> pd.DataFrame:
