@@ -1,135 +1,124 @@
-# File path: app.py
-
 import streamlit as st
 import pandas as pd
 from trulens_eval.feedback.provider import OpenAI
 from trulens_eval.feedback import prompts
-from trulens_eval import Tru  # Avoid unsupported imports
+from trulens_eval import Feedback, Select, Tru, TruChain
 
-# Initialize Trulens
+# Ensure OpenAI API is available from secrets
 openai_api_key = st.secrets["OPENAI_API_KEY"]
+feedback_provider = OpenAI(api_key=openai_api_key)
+
+# Initialize Trulens for evaluation
 tru = Tru()
-openai_provider = OpenAI(api_key=openai_api_key)
 
 
 class TrulensFeedbackHandler:
     """
-    Handles feedback using Trulens evaluation.
-    Avoids unsupported dependencies like 'runnable'.
+    Class to encapsulate Trulens feedback logic.
+    Dynamically evaluates feedback using Trulens.
     """
     def __init__(self):
-        self.feedback_provider = openai_provider
+        self.feedback_provider = feedback_provider
 
-    def evaluate(self, prompt: str, response: str):
+    def evaluate_feedback(self, prompt: str, response: str):
         """
-        Evaluate a prompt-response pair using Trulens feedback logic.
-        :param prompt: The user-provided prompt.
-        :param response: The context/response pair from data.
-        :return: Feedback evaluation score and explanation.
+        Evaluate prompt-response pair using Trulens evaluation.
+        :param prompt: Input prompt string
+        :param response: Response string from the Excel row or user input
+        :return: Trulens evaluation score and explanation
         """
         try:
-            # Minimal feedback evaluation using Trulens
-            evaluation_feedback = tru.evaluate_feedback({
+            # Evaluate feedback for the prompt-response pair
+            evaluation_result = tru.evaluate_feedback({
                 "prompt": prompt,
                 "response": response,
             })
-
-            # Extract feedback details safely
-            if evaluation_feedback:
-                score = evaluation_feedback.feedback_score
-                explanation = evaluation_feedback.explanation
+            # Extract evaluation results safely
+            if evaluation_result:
+                score = evaluation_result.feedback_score
+                explanation = evaluation_result.explanation
             else:
                 score = 0.0
-                explanation = "No valid evaluation provided."
+                explanation = "No valid feedback."
             return score, explanation
-
         except Exception as e:
-            st.error(f"Evaluation error: {e}")
-            return 0.0, "Error during feedback evaluation"
+            st.error(f"Error processing feedback: {e}")
+            return 0.0, "Error"
 
 
-# Streamlit Application
+# Streamlit Application UI Logic
 def main():
-    st.title("Trulens Feedback Application - Data Evaluation")
+    # UI Title
+    st.title("Excel-based Trulens Evaluation with Custom Metrics")
 
-    # Section for user file upload
+    # File Upload Section
     uploaded_file = st.file_uploader(
-        "Upload your Excel file to process and evaluate metrics", type=["xlsx"]
+        "Upload your Excel file with data for evaluation", type=["xlsx"]
     )
 
     if uploaded_file:
-        # Read uploaded Excel
-        data = pd.read_excel(uploaded_file)
-        st.write("Preview of Uploaded Data:")
-        st.dataframe(data)
+        # Load uploaded Excel file into a DataFrame
+        try:
+            excel_data = pd.read_excel(uploaded_file)
+            st.write("Preview of Uploaded Data:")
+            st.dataframe(excel_data)
 
-        # User sets prompts and columns dynamically
-        st.header("Define Your Metrics and Evaluation Logic")
-        num_metrics = st.number_input(
-            "How many metrics would you like to evaluate?", min_value=1, step=1, value=1
-        )
-
-        user_metrics = {}
-        for i in range(1, int(num_metrics) + 1):
-            st.subheader(f"Metric {i}")
-            selected_columns = st.multiselect(
-                f"Select relevant columns for Metric {i}:",
-                options=list(data.columns),
-                key=f"metric{i}_columns"
-            )
+            # Input field for user-defined prompt logic
             user_prompt = st.text_input(
-                f"Enter evaluation prompt for Metric {i}:",
-                key=f"metric{i}_prompt"
+                "Define your custom prompt for feedback evaluation", 
+                placeholder="Enter your prompt here"
             )
 
-            if selected_columns and user_prompt:
-                user_metrics[f"Metric {i}"] = {
-                    "columns": selected_columns,
-                    "prompt": user_prompt
-                }
+            if user_prompt and st.button("Evaluate Metrics"):
+                # Run Trulens feedback logic here
+                st.write("Processing Trulens feedback...")
+                feedback_handler = TrulensFeedbackHandler()
+                feedback_results = []
 
-        # Trigger the feedback logic computation
-        if st.button("Run Evaluation"):
-            st.subheader("Processing feedback via Trulens")
-            feedback_results = []
-            trulens_handler = TrulensFeedbackHandler()
-
-            for metric_name, metric_info in user_metrics.items():
-                try:
-                    # Process user input columns and ensure valid data
-                    valid_data = data[metric_info["columns"]].dropna(how="any")
-                    for idx, row in valid_data.iterrows():
-                        combined_context = " ".join(row.astype(str))
-
-                        # Evaluate using Trulens logic
-                        score, explanation = trulens_handler.evaluate(
-                            prompt=metric_info["prompt"], response=combined_context
+                # Iterate over rows dynamically
+                for index, row in excel_data.iterrows():
+                    try:
+                        # Combine context or data dynamically
+                        response_text = " ".join(row.dropna().astype(str))
+                        score, explanation = feedback_handler.evaluate_feedback(
+                            user_prompt, response_text
                         )
 
-                        # Log feedback results
+                        # Log feedback evaluation results
                         feedback_results.append({
-                            "Metric": metric_name,
-                            "Context": combined_context,
+                            "Row Index": index,
+                            "Response": response_text,
                             "Score": score,
                             "Explanation": explanation
                         })
+                    except Exception as e:
+                        st.error(f"Failed on row {index}: {e}")
+                        continue
 
-                    # Convert results to a DataFrame for visualization
-                    feedback_df = pd.DataFrame(feedback_results)
-                    st.write(feedback_df)
+                # Create feedback DataFrame for results visualization
+                if feedback_results:
+                    result_df = pd.DataFrame(feedback_results)
+                    st.write("Feedback Results")
+                    st.dataframe(result_df)
 
-                    # Allow users to download results
-                    csv_data = feedback_df.to_csv(index=False).encode('utf-8')
+                    # Allow users to download results as CSV
+                    csv_data = result_df.to_csv(index=False).encode('utf-8')
                     st.download_button(
                         label="Download Results as CSV",
                         data=csv_data,
                         file_name="feedback_results.csv",
                         mime="text/csv"
                     )
-                except Exception as e:
-                    st.error(f"Error processing metric '{metric_name}': {e}")
+                else:
+                    st.write("No feedback results could be processed.")
+            else:
+                st.warning("Enter a prompt and click on 'Evaluate Metrics' to process data.")
+        except Exception as e:
+            st.error(f"Could not process uploaded file: {e}")
+    else:
+        st.info("Upload an Excel file to get started.")
 
 
-# Execute the application
+# Trigger the app
 if __name__ == "__main__":
     main()
