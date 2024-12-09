@@ -57,30 +57,34 @@ def manage_feedback(row_data: Dict[str, str], feedback: Feedback):
     Returns:
         Dict: Feedback evaluation results including score and reasoning.
     """
-    # Use a valid chain/application instead of `None`
+    # Ensure proper initialization of ChatOpenAI and wrapping in a chain
     app = ChatOpenAI(model="gpt-4o", openai_api_key=st.secrets["OPENAI_API_KEY"], max_tokens=1024)
-    
-    tru_recorder = TruChain(app=app, app_id='C', feedbacks=[feedback])
+
+    # Combine all selected columns into a single prompt
+    prompt = "\n".join([f"{key}: {value}" for key, value in row_data.items() if value])
+
+    # Wrap ChatOpenAI in TruChain for proper recording
+    tru_recorder = TruChain(chain=app.invoke, app_id='C', feedbacks=[feedback])
 
     with tru_recorder as recording:
-        # Combine all selected columns into a single prompt
-        prompt = "\n".join([f"{key}: {value}" for key, value in row_data.items() if value])
+        # Invoke the prompt and record it
         llm_response = app.invoke(prompt)
 
+    # Fetch recording data
     rec = recording.get()
 
     feedback_results = {}
     feedback_data = rec.wait_for_feedback_results()
-    
+
     if not feedback_data:
-        return {"error": "No feedback results were generated."}
+        return {"error": "No feedback results were generated. Ensure the feedback logic is correct."}
 
     for feedback_obj, feedback_result in feedback_data.items():
         # Safeguard: Check if 'calls' exist and are non-empty
         if not feedback_result.calls:
             feedback_results[feedback_obj.name] = {
                 "score": None,
-                "reason": "No calls were recorded."
+                "reason": "No calls were recorded. Check your chain/app setup."
             }
             continue
 
@@ -91,6 +95,7 @@ def manage_feedback(row_data: Dict[str, str], feedback: Feedback):
         }
 
     return feedback_results
+
 
 
 
