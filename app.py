@@ -79,7 +79,7 @@ class CustomFeedback:
 
 
 # Instantiate Trulens Feedback
-custom_feedback = CustomFeedback()
+#custom_feedback = CustomFeedback()
 
 
 def process_excel_data(data: pd.DataFrame) -> pd.DataFrame:
