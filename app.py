@@ -131,7 +131,7 @@ def main():
                                 max_tokens=100,
                                 temperature=0.7
                             )
-                            response_text = openai_response['choices'][0]['message']['content'].strip()
+                            response_text = response.choices[0].message.content.strip()
                         except Exception as e:
                             response_text = f"API error: {e}"
 
