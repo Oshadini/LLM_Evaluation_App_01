@@ -1,12 +1,11 @@
 import streamlit as st
 import pandas as pd
-import json
 from typing import Optional, Dict, Tuple
 from trulens_eval.feedback.provider import OpenAI
 from langchain_openai import ChatOpenAI
-from typing import Dict, Tuple
+from trulens.feedback import Feedback, Select
+from trulens_eval import TruChain, Tru
 
-from trulens.feedback import prompts
 # Extend OpenAI provider with custom feedback functions
 class Custom_FeedBack(OpenAI):
     def style_check_professional(self, response: str) -> float:
@@ -47,6 +46,37 @@ class CustomOpenAIReasoning(OpenAI):
         """
         return self.generate_score_and_reasons(system_prompt=system_prompt, user_prompt=user_prompt)
 
+# Function to manage feedback evaluation
+def manage_feedback(row_data: Dict[str, str], feedback: Feedback):
+    """
+    Evaluate feedback for the given row data and feedback function.
+
+    Args:
+        row_data (Dict[str, str]): A dictionary of row data.
+        feedback (Feedback): Feedback function to evaluate.
+
+    Returns:
+        Dict: Feedback evaluation results including score and reasoning.
+    """
+    tru_recorder = TruChain(chain=None, app_id='C', feedbacks=[feedback])
+
+    with tru_recorder as recording:
+        # Combine all selected columns into a single prompt
+        prompt = "\n".join([f"{key}: {value}" for key, value in row_data.items() if value])
+        llm_response = ChatOpenAI(model="gpt-4o", openai_api_key=st.secrets["OPENAI_API_KEY"]).invoke(prompt)
+
+    rec = recording.get()
+
+    feedback_results = {}
+    for feedback_obj, feedback_result in rec.wait_for_feedback_results().items():
+        meta = feedback_result.calls[0].meta
+        feedback_results[feedback_obj.name] = {
+            "score": feedback_result.result,
+            "reason": meta.get("reason", "No reason provided")
+        }
+
+    return feedback_results
+
 # Streamlit App Configuration
 st.set_page_config(
     page_title="Custom Metrics Evaluation",
@@ -58,42 +88,6 @@ st.title("Custom Metrics Evaluation Using TruLens")
 # File Upload
 uploaded_file = st.file_uploader("Upload an Excel file", type=["xlsx"])
 
-# Placeholder model for generating responses
-model = ChatOpenAI(model="gpt-4o", openai_api_key=st.secrets["OPENAI_API_KEY"], max_tokens=1024)
-
-# Feedback Class
-class CustomFeedback:
-    def __init__(self):
-        self.feedbacks = []
-
-    def add_feedback(self, metric_name, feedback_function, combination):
-        self.feedbacks.append({"metric_name": metric_name, "feedback_function": feedback_function, "combination": combination})
-
-    def evaluate(self, data):
-        results = []
-        for feedback in self.feedbacks:
-            feedback_function = feedback["feedback_function"]
-            combination = feedback["combination"]
-
-            # Generate input text for the feedback function
-            input_text = "\n".join([f"{col}: {data[col]}" for col in combination if col in data])
-
-            # Invoke the feedback function
-            try:
-                result = feedback_function(input_text)
-                results.append({
-                    "metric": feedback["metric_name"],
-                    "score": result if isinstance(result, float) else "N/A",
-                    "explanation": "Processed successfully" if isinstance(result, float) else "Invalid result type",
-                })
-            except Exception as e:
-                results.append({
-                    "metric": feedback["metric_name"],
-                    "score": "Error",
-                    "explanation": str(e),
-                })
-        return results
-
 if uploaded_file:
     # Load and display the Excel file
     data = pd.read_excel(uploaded_file)
@@ -103,7 +97,7 @@ if uploaded_file:
     # User input for number of metrics
     num_metrics = st.number_input("How many metrics do you want to define?", min_value=1, max_value=10, step=1)
 
-    feedback = CustomFeedback()
+    feedback_functions = []
     metric_tabs = st.tabs([f"Metric {i+1}" for i in range(num_metrics)])
 
     for i, tab in enumerate(metric_tabs):
@@ -115,20 +109,27 @@ if uploaded_file:
 
             if feedback_type == "Professional Style":
                 custom_feedback_provider = Custom_FeedBack()
-                feedback.add_feedback(metric_name, custom_feedback_provider.style_check_professional, columns)
+                feedback = Feedback(custom_feedback_provider.style_check_professional)
             elif feedback_type == "Context Relevance":
                 custom_feedback_provider = CustomOpenAIReasoning()
-                feedback.add_feedback(metric_name, custom_feedback_provider.context_relevance_with_cot_reasons_extreme, columns)
+                feedback = Feedback(custom_feedback_provider.context_relevance_with_cot_reasons_extreme)
+
+            feedback_functions.append((metric_name, feedback, columns))
 
     if st.button("Evaluate Metrics"):
         st.subheader("Evaluation Results")
         for index, row in data.iterrows():
-            results = feedback.evaluate(row.to_dict())
             st.markdown(f"### Row {index + 1} Results")
-            for result in results:
-                st.write(f"**Metric:** {result['metric']}")
-                st.write(f"**Score:** {result['score']}")
-                st.write(f"**Explanation:** {result['explanation']}")
-                st.divider()
+
+            row_data = row.to_dict()
+            for metric_name, feedback_function, selected_columns in feedback_functions:
+                selected_data = {col: row_data[col] for col in selected_columns if col in row_data}
+                results = manage_feedback(selected_data, feedback_function)
+
+                for feedback_name, result in results.items():
+                    st.write(f"**Metric:** {feedback_name}")
+                    st.write(f"**Score:** {result['score']}")
+                    st.write(f"**Reason:** {result['reason']}")
+                    st.divider()
 else:
     st.info("Please upload an Excel file to proceed.")
