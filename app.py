@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
 from trulens_eval.app import App
-from trulens_eval.feedback.provider import Provider
-from trulens_eval.feedback import Feedback
-from trulens_eval.select import Select
-from trulens_eval.session import TruSession
+from trulens.core import Feedback
+from trulens.core import Provider
+from trulens.core import Select
+from trulens.core import TruSession
 
 # Custom Feedback Provider Class
 class CustomFeedback(Provider):
