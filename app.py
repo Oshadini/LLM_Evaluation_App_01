@@ -96,7 +96,7 @@ def main():
                         temperature=0.7
                     )
                     # Correctly access the generated content
-                    generated_text = response.choices[0].message["content"].strip()
+                    generated_text = response.choices[0].message.content.strip()  
                 except Exception as e:
                     generated_text = f"Error generating response: {e}"
 
