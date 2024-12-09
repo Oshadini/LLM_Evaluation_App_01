@@ -3,8 +3,7 @@ import pandas as pd
 from typing import Optional, Dict, Tuple
 from trulens_eval.feedback.provider import OpenAI
 from langchain_openai import ChatOpenAI
-from trulens.feedback import Feedback, Select
-from trulens_eval import TruChain, Tru
+from trulens_eval import Feedback, Select, Tru, TruChain
 
 # Extend OpenAI provider with custom feedback functions
 class Custom_FeedBack(OpenAI):
