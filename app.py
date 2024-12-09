@@ -48,13 +48,15 @@ class CustomOpenAIReasoning(OpenAI):
 # Function to manage feedback evaluation
 from langchain.chains.base import Chain
 
+from langchain.chains.base import Chain
+
 class CustomChain(Chain):
     """
     A simple chain wrapper around ChatOpenAI to work with TruChain.
     """
     def __init__(self, llm):
         super().__init__()
-        self.llm = llm
+        self.llm = llm  # Assign the llm argument to an instance variable
 
     @property
     def input_keys(self):
@@ -64,10 +66,20 @@ class CustomChain(Chain):
     def output_keys(self):
         return ["response"]
 
-    def _call(self, inputs):
+    def _call(self, inputs: Dict[str, str]) -> Dict[str, str]:
+        """
+        Process the input through the LLM and return the output.
+        
+        Args:
+            inputs (Dict[str, str]): A dictionary containing the input prompt under the "input" key.
+        
+        Returns:
+            Dict[str, str]: A dictionary containing the response under the "response" key.
+        """
         prompt = inputs["input"]
-        response = self.llm.invoke(prompt)
+        response = self.llm.invoke(prompt)  # Call the LLM's invoke method
         return {"response": response}
+
 
 def manage_feedback(row_data: Dict[str, str], feedback: Feedback):
     """
@@ -119,6 +131,7 @@ def manage_feedback(row_data: Dict[str, str], feedback: Feedback):
         }
 
     return feedback_results
+
 
 
 
