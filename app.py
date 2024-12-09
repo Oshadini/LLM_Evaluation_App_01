@@ -56,9 +56,13 @@ if uploaded_file:
     else:
         st.subheader("Custom Metric Evaluation")
 
-        # Set up App with proper context handling
-        # Pass an empty dictionary or minimal parameters to initialize
-        app = App(root_class={})  # Fix: Pass valid parameters to `App`
+        # Initialize App with the required parameters
+        app = App(
+            root_class={
+                "name": "my_custom_metric",  # Example name for identification
+                "module": "your_module_path_here"  # Replace with your actual module path
+            }
+        )
 
         # Iterate over each row and evaluate
         results = []
