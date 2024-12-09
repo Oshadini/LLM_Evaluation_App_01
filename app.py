@@ -59,28 +59,35 @@ if uploaded_file:
             results = []
             for index, row in df.iterrows():
                 # Wrap string values into Trulens Select Lens
-                context = Select.RecordInput(row['Context'])
-                question = Select.RecordInput(row['Question'])
-                answer = Select.RecordOutput(row['Answer'])
+                context_lens = Select.RecordInput(row['Context'])
+                question_lens = Select.RecordInput(row['Question'])
+                answer_lens = Select.RecordOutput(row['Answer'])
 
                 # Feedback chain setup
                 f_feedback = Feedback(feedback_provider.custom_metric_score).on(
-                    answer=answer,
-                    question=question,
-                    context=context
+                    answer=answer_lens,
+                    question=question_lens,
+                    context=context_lens
                 )
 
                 # Run Trulens evaluation
                 tru = Tru()
                 with tru as chain:
-                    chain.invoke()
+                    # Use the 'get' method to resolve lenses safely
+                    chain.invoke({
+                        "answer": answer_lens.get(),
+                        "context": context_lens.get(),
+                        "question": question_lens.get()
+                    })
+
                     feedback_result = tru.get_records_and_feedback()
-                
-                # Display results
+
+                # Extract the results safely
                 st.write(f"Row {index + 1}")
                 st.write(f"Answer: {row['Answer']}")
                 st.write(f"Context: {row['Context']}")
                 st.write(f"Feedback Results: {feedback_result}")
+
     else:
         st.error("The uploaded Excel file must contain the columns: Context, Question, and Answer")
 else:
