@@ -57,7 +57,8 @@ if uploaded_file:
         st.subheader("Custom Metric Evaluation")
 
         # Set up App with proper context handling
-        app = App()  # Create an instance of App
+        # Pass an empty dictionary or minimal parameters to initialize
+        app = App(root_class={})  # Fix: Pass valid parameters to `App`
 
         # Iterate over each row and evaluate
         results = []
