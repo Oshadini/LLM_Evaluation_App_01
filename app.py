@@ -4,22 +4,27 @@ import json
 from typing import Optional, Dict, Tuple
 from trulens_eval.feedback.provider import OpenAI
 from langchain_openai import ChatOpenAI
+from typing import Dict, Tuple
 
+from trulens.feedback import prompts
 # Extend OpenAI provider with custom feedback functions
 class Custom_FeedBack(OpenAI):
-    def style_check_professional(self, response: str, professional_prompt: str) -> float:
+    def style_check_professional(self, response: str) -> float:
         """
         Custom feedback function to grade the professional style of the response.
 
         Args:
             response (str): Text to be graded for professional style.
-            professional_prompt (str): User-defined prompt for grading.
 
         Returns:
             float: A value between 0 and 1. 0 being "not professional" and 1 being "professional".
         """
-        full_prompt = professional_prompt.format(response=response)
-        return self.generate_score(system_prompt=full_prompt)
+        professional_prompt = f"""
+        Please rate the professionalism of the following text on a scale from 0 to 10, where 0 is not at all professional and 10 is extremely professional:
+
+        {response}
+        """
+        return self.generate_score(system_prompt=professional_prompt)
 
 class CustomOpenAIReasoning(OpenAI):
     def context_relevance_with_cot_reasons_extreme(self, question: str, context: str) -> Tuple[float, Dict]:
@@ -109,11 +114,8 @@ if uploaded_file:
             feedback_type = st.selectbox(f"Feedback Type for Metric {i+1}", ["Professional Style", "Context Relevance"])
 
             if feedback_type == "Professional Style":
-                professional_prompt = st.text_area(f"Custom Professional Prompt for Metric {i+1}", 
-                    "Please rate the professionalism of the following text on a scale from 0 to 10, where 0 is not at all professional and 10 is extremely professional:\n\n{response}")
                 custom_feedback_provider = Custom_FeedBack()
-                feedback.add_feedback(metric_name, lambda response: custom_feedback_provider.style_check_professional(response, professional_prompt), columns)
-
+                feedback.add_feedback(metric_name, custom_feedback_provider.style_check_professional, columns)
             elif feedback_type == "Context Relevance":
                 custom_feedback_provider = CustomOpenAIReasoning()
                 feedback.add_feedback(metric_name, custom_feedback_provider.context_relevance_with_cot_reasons_extreme, columns)
