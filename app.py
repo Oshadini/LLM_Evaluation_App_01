@@ -58,27 +58,28 @@ if uploaded_file:
         with st.spinner("Evaluating using Trulens..."):
             results = []
             for index, row in df.iterrows():
-                context = row['Context']
-                question = row['Question']
-                answer = row['Answer']
+                # Wrap string values into Trulens Select Lens
+                context = Select.RecordInput(row['Context'])
+                question = Select.RecordInput(row['Question'])
+                answer = Select.RecordOutput(row['Answer'])
 
-                # Create a feedback mechanism chain for the inputs
-                f_feedback = (
-                    Feedback(feedback_provider.custom_metric_score)
-                    .on(answer=Select.RecordOutput)
-                    .on(question=Select.RecordInput)
-                    .on(context)
+                # Feedback chain setup
+                f_feedback = Feedback(feedback_provider.custom_metric_score).on(
+                    answer=answer,
+                    question=question,
+                    context=context
                 )
 
-                # Pass the inputs through the chain
+                # Run Trulens evaluation
                 tru = Tru()
                 with tru as chain:
-                    chain.invoke(question)  # Mocking chain invocation
+                    chain.invoke()
                     feedback_result = tru.get_records_and_feedback()
                 
+                # Display results
                 st.write(f"Row {index + 1}")
-                st.write(f"Answer: {answer}")
-                st.write(f"Context: {context}")
+                st.write(f"Answer: {row['Answer']}")
+                st.write(f"Context: {row['Context']}")
                 st.write(f"Feedback Results: {feedback_result}")
     else:
         st.error("The uploaded Excel file must contain the columns: Context, Question, and Answer")
