@@ -22,6 +22,7 @@ def load_excel(file):
     return pd.read_excel(file)
 
 # Custom feedback implementation
+# Custom feedback implementation
 class CustomFeedback:
     def __init__(self):
         self.feedbacks = []
@@ -41,8 +42,31 @@ class CustomFeedback:
 
             # Placeholder model inference
             result = model.invoke(full_prompt)
-            results.append({"metric": feedback["metric_name"], "score": result["score"], "explanation": result["reason"]})
+
+            # Parse AIMessage content
+            if hasattr(result, 'content'):
+                try:
+                    # Assuming the content is JSON
+                    parsed_result = eval(result.content)  # Consider using `json.loads` if JSON format
+                    results.append({
+                        "metric": feedback["metric_name"],
+                        "score": parsed_result.get("score", "N/A"),
+                        "explanation": parsed_result.get("reason", "No explanation provided"),
+                    })
+                except Exception as e:
+                    results.append({
+                        "metric": feedback["metric_name"],
+                        "score": "Error",
+                        "explanation": f"Error parsing result: {e}",
+                    })
+            else:
+                results.append({
+                    "metric": feedback["metric_name"],
+                    "score": "N/A",
+                    "explanation": "Invalid response format",
+                })
         return results
+
 
 # Streamlit UI
 st.title("Custom Metrics Evaluation")
