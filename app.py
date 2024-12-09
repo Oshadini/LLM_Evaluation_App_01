@@ -67,7 +67,7 @@ if uploaded_file:
                 Feedback(standalone.custom_metric_score)
                 .on(answer=Select.RecordOutput)
                 .on(question=Select.RecordInput)
-                .on(context=Select.Literal(context))  # Wrap context in a Lens
+                .on(context)  # Wrap context in a Lens
             )
         
             # Simulate chain and record evaluation
