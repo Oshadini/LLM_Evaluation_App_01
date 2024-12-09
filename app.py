@@ -75,7 +75,7 @@ if uploaded_file:
     # User input: Number of metrics
     num_metrics = st.number_input("How many metrics do you want to define?", min_value=1, max_value=10, step=1)
 
-    chain = ChatopenAI(model="gpt-4o", openai_api_key=st.secrets["OPENAI_API_KEY"], max_tokens=1024)
+    chain = ChatOpenAI(model="gpt-4o", openai_api_key=st.secrets["OPENAI_API_KEY"], max_tokens=1024)
     feedback = CustomFeedback(chain)
 
     metric_tabs = st.tabs([f"Metric {i+1}" for i in range(num_metrics)])
