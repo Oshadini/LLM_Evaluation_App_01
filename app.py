@@ -5,6 +5,7 @@ from typing import Tuple, Dict
 from trulens.core import Feedback
 from trulens.providers.openai import OpenAI as fOpenAI
 from trulens.core import TruSession
+from trulens.feedback import prompts
 
 # Initialize the session
 session = TruSession()
