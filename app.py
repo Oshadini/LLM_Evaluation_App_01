@@ -79,7 +79,7 @@ if uploaded_file:
             selected_columns = st.multiselect(
                 "Select columns to use in the prompt:",
                 options=required_columns,
-                default=["Question", "Answer"]
+                #default=["Question", "Answer"]
             )
 
             # Check if at least one column is selected
