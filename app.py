@@ -79,38 +79,42 @@ if uploaded_file:
             for i in range(num_metrics):
                 st.subheader(f"Metric {i + 1}")
                 system_prompt = st.text_area(f"Enter the System Prompt for Metric {i + 1}:")
+
+                # Validate the system prompt
+                valid_terms = ["question", "answer", "content", "reference content", "reference answer"]
+                matched_terms = [term for term in valid_terms if term in system_prompt.lower()]
+                if not system_prompt.strip() or len(matched_terms) < 2:
+                    st.error(
+                        f"For Metric {i + 1}, the system prompt must include valid criteria involving at least two of the following: {', '.join(valid_terms)}."
+                    )
+                    continue
+
                 selected_columns = st.multiselect(
                     f"Select columns for Metric {i + 1}:",
                     options=required_columns,
                     key=f"columns_{i}"
                 )
 
-                # Validation: Ensure the system_prompt criteria match selected columns
-                if system_prompt.strip() and selected_columns:
-                    prompt_criteria = {
-                        "question": "Question" in selected_columns,
-                        "answer": "Answer" in selected_columns,
-                        "content": "Content" in selected_columns,
-                        "reference_content": "Reference Content" in selected_columns,
-                        "reference_answer": "Reference Answer" in selected_columns
-                    }
+                # Ensure at least two columns are selected
+                if len(selected_columns) < 2:
+                    st.error(f"For Metric {i + 1}, you must select at least two columns.")
+                    continue
 
-                    if "question" in system_prompt.lower() and not prompt_criteria["question"]:
-                        st.error(f"For Metric {i + 1}, the selected columns must include 'Question'.")
-                        continue
-                    if "answer" in system_prompt.lower() and not prompt_criteria["answer"]:
-                        st.error(f"For Metric {i + 1}, the selected columns must include 'Answer'.")
-                        continue
-                    if "content" in system_prompt.lower() and not prompt_criteria["content"]:
-                        st.error(f"For Metric {i + 1}, the selected columns must include 'Content'.")
-                        continue
-                    if "reference content" in system_prompt.lower() and not prompt_criteria["reference_content"]:
-                        st.error(f"For Metric {i + 1}, the selected columns must include 'Reference Content'.")
-                        continue
-                    if "reference answer" in system_prompt.lower() and not prompt_criteria["reference_answer"]:
-                        st.error(f"For Metric {i + 1}, the selected columns must include 'Reference Answer'.")
-                        continue
-
+                # Ensure the selected columns match the prompt criteria
+                prompt_criteria = {
+                    "question": "Question" in selected_columns,
+                    "answer": "Answer" in selected_columns,
+                    "content": "Content" in selected_columns,
+                    "reference content": "Reference Content" in selected_columns,
+                    "reference answer": "Reference Answer" in selected_columns
+                }
+                for term in matched_terms:
+                    if not prompt_criteria.get(term.replace(" ", "_")):
+                        st.error(
+                            f"For Metric {i + 1}, the selected columns must align with the system prompt's criteria (e.g., '{term}')."
+                        )
+                        break
+                else:
                     metric_definitions.append({
                         "system_prompt": system_prompt,
                         "selected_columns": selected_columns
