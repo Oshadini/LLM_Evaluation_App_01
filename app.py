@@ -1,4 +1,4 @@
-# Updated Code to Show Correct Metric Number
+# Updated Code to Fix Column Selection Validation
 import streamlit as st
 import pandas as pd
 from typing import Tuple, Dict
@@ -84,6 +84,14 @@ if uploaded_file:
                 # Ensure matched_terms is always defined
                 valid_terms = ["question", "answer", "content", "reference content", "reference answer"]
                 matched_terms = [term for term in valid_terms if term in system_prompt.lower()]
+
+                # Disregard "answer" if "reference answer" is in the prompt
+                if "reference answer" in system_prompt.lower():
+                    matched_terms = [term for term in matched_terms if term != "answer"]
+
+                # Disregard "content" if "reference content" is in the prompt
+                if "reference content" in system_prompt.lower():
+                    matched_terms = [term for term in matched_terms if term != "content"]
 
                 if valid_prompt:
                     # Validate the system prompt
