@@ -12,22 +12,10 @@ session = TruSession()
 
 # Define the custom class
 class prompt_with_conversation_relevence(fOpenAI):
-    def prompt_with_conversation_relevence_feedback(self, question: str, formatted_history: str) -> Tuple[float, Dict]:
+    def prompt_with_conversation_relevence_feedback(self, question: str, formatted_history: str, system_prompt: str) -> Tuple[float, Dict]:
         """
         Process the question and formatted history to generate relevance feedback.
         """
-        # Get the system_prompt as user input
-        st.write("Enter the system prompt below:")
-        system_prompt = st.text_area(
-            "System Prompt",
-            placeholder="Enter the system prompt to guide the relevance evaluation...",
-            height=200,
-            key="1"
-        )
-        if not system_prompt.strip():
-            st.error("System prompt cannot be empty. Please enter a valid prompt.")
-            return None, {"criteria": "N/A", "supporting_evidence": "N/A"}
-
         # Construct the user prompt
         user_prompt = """CHAT_GUIDANCE: {question}
 
@@ -59,6 +47,23 @@ prompt_with_conversation_relevence_custom = prompt_with_conversation_relevence()
 st.title("Relevance Grader Tool")
 st.write("Upload an Excel file with columns: `question` and `answer` to evaluate relevance scores.")
 
+# Input for the system prompt
+system_prompt = st.text_area(
+    "Enter the System Prompt:",
+    """You are a RELEVANCE grader; providing the relevance of the given CHAT_GUIDANCE to the given CHAT_CONVERSATION.
+    Respond only as a number from 0 to 10 where 0 is the least relevant and 10 is the most relevant. 
+
+    A few additional scoring guidelines:
+    - Long CHAT_CONVERSATION should score equally well as short CHAT_CONVERSATION.
+    - RELEVANCE score should increase as the CHAT_CONVERSATION provides more RELEVANT context to the CHAT_GUIDANCE.
+    - RELEVANCE score should increase as the CHAT_CONVERSATION provides RELEVANT context to more parts of the CHAT_GUIDANCE.
+    - CHAT_CONVERSATION that is RELEVANT to some of the CHAT_GUIDANCE should score of 2, 3 or 4. Higher score indicates more RELEVANCE.
+    - CHAT_CONVERSATION that is RELEVANT to most of the CHAT_GUIDANCE should get a score of 5, 6, 7 or 8. Higher score indicates more RELEVANCE.
+    - CHAT_CONVERSATION that is RELEVANT to the entire CHAT_GUIDANCE should get a score of 9 or 10. Higher score indicates more RELEVANCE.
+    - CHAT_CONVERSATION must be relevant and helpful for answering the entire CHAT_GUIDANCE to get a score of 10.
+    - Never elaborate."""
+)
+
 # File uploader
 uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
 if uploaded_file:
@@ -82,10 +87,9 @@ if uploaded_file:
 
                 # Generate relevance feedback
                 score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(
-                    question, formatted_history
+                    question, formatted_history, system_prompt
                 )
-                if score is None:  # Skip processing if the system prompt was invalid
-                    continue
+                st.write(details)
                 results.append({
                     "question": question,
                     "formatted_history": formatted_history,
