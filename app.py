@@ -11,17 +11,10 @@ session = TruSession()
 
 # Define the class based on the provided code
 class prompt_with_conversation_relevence(fOpenAI):
-    def prompt_with_conversation_relevence_feedback(self, question: str) -> Tuple[float, Dict]:
-        # Assuming `agent_wise_memory` is defined and accessible
-        history = agent_wise_memory.load_memory_variables({})['history']
-
-        formatted_history = ""
-        for message in history:
-            if message.__class__.__name__ == "AIMessage":
-                formatted_history += "AI Message: " + message.content + "\n"
-            elif message.__class__.__name__ == "HumanMessage":
-                formatted_history += "Human Message: " + message.content + "\n"
-
+    def prompt_with_conversation_relevence_feedback(self, question: str, formatted_history: str) -> Tuple[float, Dict]:
+        """
+        Process the question and formatted history to generate relevance feedback.
+        """
         system_prompt = """You are a RELEVANCE grader; providing the relevance of the given CHAT_GUIDANCE to the given CHAT_CONVERSATION.
             Respond only as a number from 0 to 10 where 0 is the least relevant and 10 is the most relevant. 
 
@@ -35,18 +28,11 @@ class prompt_with_conversation_relevence(fOpenAI):
             - CHAT_CONVERSATION must be relevant and helpful for answering the entire CHAT_GUIDANCE to get a score of 10.
             - Never elaborate."""
 
-        user_prompt = PromptTemplate.from_template(
-            """CHAT_GUIDANCE: {question}
+        user_prompt = f"""CHAT_GUIDANCE: {question}
 
-            CHAT_CONVERSATION: {formatted_history}
-            
-            RELEVANCE: """
-        )
-
-        user_prompt = user_prompt.format(question=question, formatted_history=formatted_history)
-        user_prompt = user_prompt.replace(
-            "RELEVANCE:", prompts.COT_REASONS_TEMPLATE
-        )
+        CHAT_CONVERSATION: {formatted_history}
+        
+        RELEVANCE: """
 
         result = self.generate_score_and_reasons(system_prompt, user_prompt)
 
@@ -84,13 +70,17 @@ if uploaded_file:
             st.write("Preview of Uploaded Data:")
             st.dataframe(df.head())
 
-            # Process each question
+            # Process each row
             results = []
             for index, row in df.iterrows():
                 question = row["question"]
-                score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(question)
+                formatted_history = row["answer"]  # Assuming "answer" contains the CHAT_CONVERSATION
+                score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(
+                    question, formatted_history
+                )
                 results.append({
                     "question": question,
+                    "formatted_history": formatted_history,
                     "score": score,
                     "criteria": details["criteria"],
                     "supporting_evidence": details["supporting_evidence"]
