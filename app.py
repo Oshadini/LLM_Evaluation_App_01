@@ -72,34 +72,43 @@ if uploaded_file:
             st.write("Preview of Uploaded Data:")
             st.dataframe(df.head())
 
-            # Step 2: Input for the system prompt
-            system_prompt = st.text_area("Enter the System Prompt:")
+            # Step 2: Select number of metrics
+            num_metrics = st.number_input("Enter the number of metrics you want to define:", min_value=1, step=1)
 
-            # Step 3: Let the user select columns
-            selected_columns = st.multiselect(
-                "Select columns to be evaluated:",
-                options=required_columns,
-                #default=["Question", "Answer"]
-            )
+            metric_definitions = []
+            for i in range(num_metrics):
+                st.subheader(f"Metric {i + 1}")
+                system_prompt = st.text_area(f"Enter the System Prompt for Metric {i + 1}:")
+                selected_columns = st.multiselect(
+                    f"Select columns for Metric {i + 1}:",
+                    options=required_columns,
+                    key=f"columns_{i}"
+                )
+                if selected_columns and system_prompt.strip():
+                    metric_definitions.append({
+                        "system_prompt": system_prompt,
+                        "selected_columns": selected_columns
+                    })
 
-            # Check if at least one column is selected
-            if selected_columns:
-                # Step 4: Add a button to generate results
-                if st.button("Generate Results"):
-                    if system_prompt.strip() == "":
-                        st.error("Please enter the system prompt.")
-                    else:
-                        # Map selected columns to variable names
-                        column_mapping = {
-                            "Question": "question",
-                            "Content": "formatted_content",
-                            "Answer": "formatted_history",
-                            "Reference Content": "formatted_reference_content",
-                            "Reference Answer": "formatted_reference_answer"
-                        }
+            # Step 3: Generate results
+            if st.button("Generate Results"):
+                if not metric_definitions:
+                    st.error("Please define at least one metric with a system prompt and selected columns.")
+                else:
+                    # Map column names to variable names
+                    column_mapping = {
+                        "Question": "question",
+                        "Content": "formatted_content",
+                        "Answer": "formatted_history",
+                        "Reference Content": "formatted_reference_content",
+                        "Reference Answer": "formatted_reference_answer"
+                    }
 
-                        # Process each row
-                        results = []
+                    results = []
+                    for metric in metric_definitions:
+                        system_prompt = metric["system_prompt"]
+                        selected_columns = metric["selected_columns"]
+
                         for index, row in df.iterrows():
                             # Prepare dynamic parameters based on selected columns
                             params = {"system_prompt": system_prompt}
@@ -107,40 +116,29 @@ if uploaded_file:
                                 if col in column_mapping:
                                     params[column_mapping[col]] = row[col]
 
-                            # Dynamically construct criteria, supporting evidence, and score based on selected columns
-                            if "Question" in selected_columns and "Answer" in selected_columns:
-                                score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
-                            elif "Question" in selected_columns and "Reference Answer" in selected_columns:
-                                score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
-                            elif "Content" in selected_columns and "Reference Content" in selected_columns:
-                                score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
-                            else:
-                                st.error("Selected columns are not supported for relevance evaluation.")
-                                continue
+                            # Generate score and feedback
+                            score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
 
                             # Append results
-                            st.write(details)
                             results.append({
-                                "selected_columns": selected_columns,
-                                "score": score,
-                                "criteria": details["criteria"],
-                                "supporting_evidence": details["supporting_evidence"]
+                                "Metric": f"Metric {metric_definitions.index(metric) + 1}",
+                                "Selected Columns": ", ".join(selected_columns),
+                                "Score": score,
+                                "Criteria": details["criteria"],
+                                "Supporting Evidence": details["supporting_evidence"]
                             })
 
-                        # Convert results to DataFrame
-                        results_df = pd.DataFrame(results)
-                        st.write("Results:")
-                        st.dataframe(results_df)
+                    # Convert results to DataFrame
+                    results_df = pd.DataFrame(results)
+                    st.write("Results:")
+                    st.dataframe(results_df)
 
-                        # Download results as CSV
-                        st.download_button(
-                            label="Download Results as CSV",
-                            data=results_df.to_csv(index=False),
-                            file_name="relevance_results.csv",
-                            mime="text/csv",
-                        )
-            else:
-                st.error("Please select at least two columns.")
-
+                    # Download results as CSV
+                    st.download_button(
+                        label="Download Results as CSV",
+                        data=results_df.to_csv(index=False),
+                        file_name="relevance_results.csv",
+                        mime="text/csv",
+                    )
     except Exception as e:
         st.error(f"An error occurred: {e}")
