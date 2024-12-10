@@ -1,4 +1,4 @@
-# app.py
+# Updated Code - Modified as per requirements
 import streamlit as st
 import pandas as pd
 from typing import Tuple, Dict
@@ -16,18 +16,22 @@ class prompt_with_conversation_relevence(fOpenAI):
         """
         Process the dynamically selected parameters to generate relevance feedback.
         """
-        # Dynamically construct the user prompt based on provided parameters
+        # Dynamically construct the user prompt based on selected columns
         user_prompt = ""
-        if "question" in kwargs:
-            user_prompt += "question: {question}\n\n"
-        if "formatted_history" in kwargs:
-            user_prompt += "answer: {formatted_history}\n\n"
-        if "formatted_reference_content" in kwargs:
-            user_prompt += "refernce_content: {formatted_reference_content}\n\n"
-        if "formatted_reference_answer" in kwargs:
-            user_prompt += "refernce_answer: {formatted_reference_answer}\n\n"
-        if "formatted_content" in kwargs:  # New if statement added
-            user_prompt += "content: {formatted_content}\n\n"
+
+        # Construct user_prompt only from selected columns
+        selected_columns_mapping = {
+            "question": "Question",
+            "formatted_content": "Content",
+            "formatted_history": "Answer",
+            "formatted_reference_content": "Reference Content",
+            "formatted_reference_answer": "Reference Answer",
+        }
+
+        for key, col_name in selected_columns_mapping.items():
+            if col_name in kwargs.get("selected_columns", []):
+                user_prompt += f"{key}: {{{key}}}\n\n"
+
         user_prompt += "RELEVANCE: "
 
         # Format the user prompt with the provided values
@@ -102,7 +106,7 @@ if uploaded_file:
                     results = []
                     for index, row in df.iterrows():
                         # Prepare dynamic parameters
-                        params = {"system_prompt": system_prompt}
+                        params = {"system_prompt": system_prompt, "selected_columns": selected_columns}
                         for col in selected_columns:
                             if col in column_mapping:
                                 params[column_mapping[col]] = row[col]
