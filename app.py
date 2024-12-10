@@ -53,7 +53,7 @@ class prompt_with_conversation_relevence(fOpenAI):
 prompt_with_conversation_relevence_custom = prompt_with_conversation_relevence()
 
 # Streamlit UI
-st.title("Relevance Grader Tool")
+st.title("LLM Evaluation Tool")
 st.write("Upload an Excel file with columns: Question, Content, Answer, Reference Content, Reference Answer to evaluate relevance scores.")
 
 # Step 1: File uploader
