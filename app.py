@@ -26,6 +26,8 @@ class prompt_with_conversation_relevence(fOpenAI):
             user_prompt += "CHAT_REF_CONTENT: {formatted_reference_content}\n\n"
         if "formatted_reference_answer" in kwargs:
             user_prompt += "CHAT_REF_ANSWER: {formatted_reference_answer}\n\n"
+        if "formatted_content" in kwargs:  # New if statement added
+            user_prompt += "CHAT_CONTENT: {formatted_content}\n\n"
         user_prompt += "RELEVANCE: "
 
         # Format the user prompt with the provided values
@@ -90,7 +92,7 @@ if uploaded_file:
                     # Map selected columns to variable names
                     column_mapping = {
                         "Question": "question",
-                        "Content": "formatted_history",
+                        "Content": "formatted_content",  # Updated for formatted_content
                         "Answer": "formatted_history",
                         "Reference Content": "formatted_reference_content",
                         "Reference Answer": "formatted_reference_answer"
