@@ -9,7 +9,7 @@ from trulens.core import TruSession
 # Initialize the session
 session = TruSession()
 
-# Define the class based on the provided code
+# Define the custom class
 class prompt_with_conversation_relevence(fOpenAI):
     def prompt_with_conversation_relevence_feedback(self, question: str, formatted_history: str) -> Tuple[float, Dict]:
         """
@@ -28,12 +28,20 @@ class prompt_with_conversation_relevence(fOpenAI):
             - CHAT_CONVERSATION must be relevant and helpful for answering the entire CHAT_GUIDANCE to get a score of 10.
             - Never elaborate."""
 
-        user_prompt = f"""CHAT_GUIDANCE: {question}
+        # Construct the user prompt
+        user_prompt = """CHAT_GUIDANCE: {question}
 
         CHAT_CONVERSATION: {formatted_history}
         
         RELEVANCE: """
+        user_prompt = user_prompt.format(question=question, formatted_history=formatted_history)
 
+        # Replace RELEVANCE with additional reasoning templates
+        user_prompt = user_prompt.replace(
+            "RELEVANCE:", prompts.COT_REASONS_TEMPLATE
+        )
+
+        # Generate results
         result = self.generate_score_and_reasons(system_prompt, user_prompt)
 
         details = result[1]
@@ -47,14 +55,9 @@ class prompt_with_conversation_relevence(fOpenAI):
 # Initialize the custom class
 prompt_with_conversation_relevence_custom = prompt_with_conversation_relevence()
 
-# Initialize the feedback system
-f_prompt_with_conversation_relevence = Feedback(
-    prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback, verbose=True
-).on_input()
-
 # Streamlit UI
 st.title("Relevance Grader Tool")
-st.write("Upload an Excel file with columns: `question`, `answer`, and `context` to evaluate relevance scores.")
+st.write("Upload an Excel file with columns: `question` and `answer` to evaluate relevance scores.")
 
 # File uploader
 uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
@@ -64,8 +67,8 @@ if uploaded_file:
         df = pd.read_excel(uploaded_file)
 
         # Validate required columns
-        if not all(col in df.columns for col in ["question", "answer", "context"]):
-            st.error("The uploaded file must contain `question`, `answer`, and `context` columns.")
+        if not all(col in df.columns for col in ["question", "answer"]):
+            st.error("The uploaded file must contain `question` and `answer` columns.")
         else:
             st.write("Preview of Uploaded Data:")
             st.dataframe(df.head())
@@ -73,8 +76,11 @@ if uploaded_file:
             # Process each row
             results = []
             for index, row in df.iterrows():
+                # Extract question and formatted history from the file
                 question = row["question"]
-                formatted_history = row["answer"]  # Assuming "answer" contains the CHAT_CONVERSATION
+                formatted_history = row["answer"]
+
+                # Generate relevance feedback
                 score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(
                     question, formatted_history
                 )
