@@ -109,7 +109,7 @@ if uploaded_file:
 
                         # Generate relevance feedback
                         score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
-                        st.write(details)
+                        #st.write(details)
                         results.append({
                             "selected_columns": selected_columns,
                             "score": score,
