@@ -48,21 +48,7 @@ st.title("Relevance Grader Tool")
 st.write("Upload an Excel file with columns: `question` and `answer` to evaluate relevance scores.")
 
 # Input for the system prompt
-system_prompt = st.text_area(
-    "Enter the System Prompt:",
-    """You are a RELEVANCE grader; providing the relevance of the given CHAT_GUIDANCE to the given CHAT_CONVERSATION.
-    Respond only as a number from 0 to 10 where 0 is the least relevant and 10 is the most relevant. 
-
-    A few additional scoring guidelines:
-    - Long CHAT_CONVERSATION should score equally well as short CHAT_CONVERSATION.
-    - RELEVANCE score should increase as the CHAT_CONVERSATION provides more RELEVANT context to the CHAT_GUIDANCE.
-    - RELEVANCE score should increase as the CHAT_CONVERSATION provides RELEVANT context to more parts of the CHAT_GUIDANCE.
-    - CHAT_CONVERSATION that is RELEVANT to some of the CHAT_GUIDANCE should score of 2, 3 or 4. Higher score indicates more RELEVANCE.
-    - CHAT_CONVERSATION that is RELEVANT to most of the CHAT_GUIDANCE should get a score of 5, 6, 7 or 8. Higher score indicates more RELEVANCE.
-    - CHAT_CONVERSATION that is RELEVANT to the entire CHAT_GUIDANCE should get a score of 9 or 10. Higher score indicates more RELEVANCE.
-    - CHAT_CONVERSATION must be relevant and helpful for answering the entire CHAT_GUIDANCE to get a score of 10.
-    - Never elaborate."""
-)
+system_prompt = st.text_area("Enter the System Prompt:")
 
 # File uploader
 uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
