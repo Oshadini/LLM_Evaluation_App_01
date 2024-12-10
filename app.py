@@ -72,15 +72,15 @@ if uploaded_file:
             st.write("Preview of Uploaded Data:")
             st.dataframe(df.head())
 
-            # Step 2: Let the user select columns
+            # Step 2: Input for the system prompt
+            system_prompt = st.text_area("Enter the System Prompt:")
+
+            # Step 3: Let the user select columns
             selected_columns = st.multiselect(
                 "Select columns to use in the prompt:",
                 options=required_columns,
                 default=["Question", "Answer"]
             )
-
-            # Step 3: Input for the system prompt
-            system_prompt = st.text_area("Enter the System Prompt:")
 
             # Check if at least one column is selected
             if selected_columns:
