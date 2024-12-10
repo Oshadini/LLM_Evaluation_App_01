@@ -1,4 +1,4 @@
-# Updated Code to Fix Column Selection Validation
+# Corrected Code to Fix "Reference Content" Validation Error
 import streamlit as st
 import pandas as pd
 from typing import Tuple, Dict
@@ -115,16 +115,19 @@ if uploaded_file:
                     continue
 
                 # Validate column selection alignment with system prompt
+                column_mapping = {
+                    "question": "Question",
+                    "answer": "Answer",
+                    "content": "Content",
+                    "reference content": "Reference Content",
+                    "reference answer": "Reference Answer"
+                }
                 prompt_criteria = {
-                    "question": "Question" in selected_columns,
-                    "answer": "Answer" in selected_columns,
-                    "content": "Content" in selected_columns,
-                    "reference content": "Reference Content" in selected_columns,
-                    "reference answer": "Reference Answer" in selected_columns
+                    term: column_mapping[term] in selected_columns
+                    for term in matched_terms
                 }
                 for term in matched_terms:
-                    expected_key = term.replace(" ", "_")
-                    if not prompt_criteria.get(expected_key):
+                    if not prompt_criteria.get(term):
                         st.error(
                             f"For Metric {i + 1}, the selected columns must align with the system prompt's criteria (e.g., include '{term}')."
                         )
