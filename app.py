@@ -1,4 +1,4 @@
-# Updated Code to Ensure Criteria Validation for Selected Columns
+# Updated Code to Show Correct Metric Number
 import streamlit as st
 import pandas as pd
 from typing import Tuple, Dict
@@ -45,7 +45,7 @@ class prompt_with_conversation_relevence(fOpenAI):
         reason = details['reason'].split('\n')
         criteria = reason[0].split(': ')[1]
         supporting_evidence = reason[1].split(': ')[1]
-        score = reason[-1].split(': ")[1]"
+        score = reason[-1].split(': ')[1]
 
         return score, {"criteria": criteria, "supporting_evidence": supporting_evidence}
 
@@ -106,7 +106,7 @@ if uploaded_file:
                     st.error(f"For Metric {i + 1}, you must select at least two columns.")
                     continue
 
-                # Ensure the selected columns match the prompt criteria
+                # Validate column selection alignment with system prompt
                 prompt_criteria = {
                     "question": "Question" in selected_columns,
                     "answer": "Answer" in selected_columns,
@@ -114,26 +114,18 @@ if uploaded_file:
                     "reference content": "Reference Content" in selected_columns,
                     "reference answer": "Reference Answer" in selected_columns
                 }
-
-                # Validation for columns based on selected prompt
-                if "answer" in matched_terms and "reference answer" in selected_columns:
-                    st.error(f"For Metric {i + 1}, the system prompt cannot contain 'answer' and 'reference answer' at the same time.")
-                    continue
-                if "question" in matched_terms and "question" not in selected_columns:
-                    st.error(f"For Metric {i + 1}, the system prompt must include 'question' when 'Question' is selected as a column.")
-                    continue
-                if "content" in matched_terms and "content" not in selected_columns:
-                    st.error(f"For Metric {i + 1}, the system prompt must include 'content' when 'Content' is selected as a column.")
-                    continue
-                if "reference content" in matched_terms and "reference content" not in selected_columns:
-                    st.error(f"For Metric {i + 1}, the system prompt must include 'reference content' when 'Reference Content' is selected as a column.")
-                    continue
-
-                # Add metric definition
-                metric_definitions.append({
-                    "system_prompt": system_prompt,
-                    "selected_columns": selected_columns
-                })
+                for term in matched_terms:
+                    expected_key = term.replace(" ", "_")
+                    if not prompt_criteria.get(expected_key):
+                        st.error(
+                            f"For Metric {i + 1}, the selected columns must align with the system prompt's criteria (e.g., include '{term}')."
+                        )
+                        break
+                else:
+                    metric_definitions.append({
+                        "system_prompt": system_prompt,
+                        "selected_columns": selected_columns
+                    })
 
             # Step 3: Generate results
             if st.button("Generate Results"):
