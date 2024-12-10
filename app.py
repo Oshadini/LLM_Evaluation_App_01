@@ -21,7 +21,8 @@ class prompt_with_conversation_relevence(fOpenAI):
         system_prompt = st.text_area(
             "System Prompt",
             placeholder="Enter the system prompt to guide the relevance evaluation...",
-            height=200
+            height=200,
+            key="1"
         )
         if not system_prompt.strip():
             st.error("System prompt cannot be empty. Please enter a valid prompt.")
