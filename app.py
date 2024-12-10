@@ -1,4 +1,4 @@
-# Updated Code with Fixed matched_terms Issue
+# Updated Code to Show Correct Metric Number
 import streamlit as st
 import pandas as pd
 from typing import Tuple, Dict
@@ -141,7 +141,7 @@ if uploaded_file:
                     }
 
                     results = []
-                    for metric in metric_definitions:
+                    for metric_index, metric in enumerate(metric_definitions, start=1):
                         system_prompt = metric["system_prompt"]
                         selected_columns = metric["selected_columns"]
 
@@ -155,9 +155,9 @@ if uploaded_file:
                             # Generate score and feedback
                             score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
 
-                            # Append results
+                            # Append results with correct metric index
                             results.append({
-                                "Metric": f"Metric {metric_definitions.index(metric) + 1}",
+                                "Metric": f"Metric {metric_index}",
                                 "Selected Columns": ", ".join(selected_columns),
                                 "Score": score,
                                 "Criteria": details["criteria"],
