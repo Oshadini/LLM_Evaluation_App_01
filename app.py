@@ -19,15 +19,15 @@ class prompt_with_conversation_relevence(fOpenAI):
         # Dynamically construct the user prompt based on provided parameters
         user_prompt = ""
         if "question" in kwargs:
-            user_prompt += "CHAT_GUIDANCE: {question}\n\n"
+            user_prompt += "question: {question}\n\n"
         if "formatted_history" in kwargs:
-            user_prompt += "CHAT_CONVERSATION: {formatted_history}\n\n"
+            user_prompt += "answer: {formatted_history}\n\n"
         if "formatted_reference_content" in kwargs:
-            user_prompt += "CHAT_REF_CONTENT: {formatted_reference_content}\n\n"
+            user_prompt += "refernce_content: {formatted_reference_content}\n\n"
         if "formatted_reference_answer" in kwargs:
-            user_prompt += "CHAT_REF_ANSWER: {formatted_reference_answer}\n\n"
+            user_prompt += "refernce_answer: {formatted_reference_answer}\n\n"
         if "formatted_content" in kwargs:  # New if statement added
-            user_prompt += "CHAT_CONTENT: {formatted_content}\n\n"
+            user_prompt += "content: {formatted_content}\n\n"
         user_prompt += "RELEVANCE: "
 
         # Format the user prompt with the provided values
