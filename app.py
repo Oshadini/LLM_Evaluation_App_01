@@ -82,52 +82,65 @@ if uploaded_file:
                 default=["Question", "Answer"]
             )
 
-            # Step 4: Add a button to generate results
-            if st.button("Generate Results"):
-                if system_prompt.strip() == "":
-                    st.error("Please enter the system prompt.")
-                elif not selected_columns:
-                    st.error("Please select at least one column.")
-                else:
-                    # Map selected columns to variable names
-                    column_mapping = {
-                        "Question": "question",
-                        "Content": "formatted_content",
-                        "Answer": "formatted_history",
-                        "Reference Content": "formatted_reference_content",
-                        "Reference Answer": "formatted_reference_answer"
-                    }
+            # Check if at least one column is selected
+            if selected_columns:
+                # Step 4: Add a button to generate results
+                if st.button("Generate Results"):
+                    if system_prompt.strip() == "":
+                        st.error("Please enter the system prompt.")
+                    else:
+                        # Map selected columns to variable names
+                        column_mapping = {
+                            "Question": "question",
+                            "Content": "formatted_content",
+                            "Answer": "formatted_history",
+                            "Reference Content": "formatted_reference_content",
+                            "Reference Answer": "formatted_reference_answer"
+                        }
 
-                    # Process each row
-                    results = []
-                    for index, row in df.iterrows():
-                        # Prepare dynamic parameters
-                        params = {"system_prompt": system_prompt, "selected_columns": selected_columns}
-                        for col in selected_columns:
-                            if col in column_mapping:
-                                params[column_mapping[col]] = row[col]
+                        # Process each row
+                        results = []
+                        for index, row in df.iterrows():
+                            # Prepare dynamic parameters based on selected columns
+                            params = {"system_prompt": system_prompt}
+                            for col in selected_columns:
+                                if col in column_mapping:
+                                    params[column_mapping[col]] = row[col]
 
-                        # Generate relevance feedback
-                        score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
-                        #st.write(details)
-                        results.append({
-                            "selected_columns": selected_columns,
-                            "score": score,
-                            "criteria": details["criteria"],
-                            "supporting_evidence": details["supporting_evidence"]
-                        })
+                            # Dynamically construct criteria, supporting evidence, and score based on selected columns
+                            if "Question" in selected_columns and "Answer" in selected_columns:
+                                score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
+                            elif "Question" in selected_columns and "Reference Answer" in selected_columns:
+                                score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
+                            elif "Content" in selected_columns and "Reference Content" in selected_columns:
+                                score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
+                            else:
+                                st.error("Selected columns are not supported for relevance evaluation.")
+                                continue
 
-                    # Convert results to DataFrame
-                    results_df = pd.DataFrame(results)
-                    st.write("Results:")
-                    st.dataframe(results_df)
+                            # Append results
+                            st.write(details)
+                            results.append({
+                                "selected_columns": selected_columns,
+                                "score": score,
+                                "criteria": details["criteria"],
+                                "supporting_evidence": details["supporting_evidence"]
+                            })
 
-                    # Download results as CSV
-                    st.download_button(
-                        label="Download Results as CSV",
-                        data=results_df.to_csv(index=False),
-                        file_name="relevance_results.csv",
-                        mime="text/csv",
-                    )
+                        # Convert results to DataFrame
+                        results_df = pd.DataFrame(results)
+                        st.write("Results:")
+                        st.dataframe(results_df)
+
+                        # Download results as CSV
+                        st.download_button(
+                            label="Download Results as CSV",
+                            data=results_df.to_csv(index=False),
+                            file_name="relevance_results.csv",
+                            mime="text/csv",
+                        )
+            else:
+                st.error("Please select at least one column.")
+
     except Exception as e:
         st.error(f"An error occurred: {e}")
