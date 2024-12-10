@@ -1,4 +1,4 @@
-# Updated Code
+# Updated Code with Fixed matched_terms Issue
 import streamlit as st
 import pandas as pd
 from typing import Tuple, Dict
@@ -81,10 +81,12 @@ if uploaded_file:
                 system_prompt = st.text_area(f"Enter the System Prompt for Metric {i + 1}:")
                 valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}")
 
+                # Ensure matched_terms is always defined
+                valid_terms = ["question", "answer", "content", "reference content", "reference answer"]
+                matched_terms = [term for term in valid_terms if term in system_prompt.lower()]
+
                 if valid_prompt:
                     # Validate the system prompt
-                    valid_terms = ["question", "answer", "content", "reference content", "reference answer"]
-                    matched_terms = [term for term in valid_terms if term in system_prompt.lower()]
                     if not system_prompt.strip() or len(matched_terms) < 2:
                         st.error(
                             f"For Metric {i + 1}, the system prompt must include valid criteria involving at least two of the following: {', '.join(valid_terms)}."
