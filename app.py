@@ -79,15 +79,19 @@ if uploaded_file:
             for i in range(num_metrics):
                 st.subheader(f"Metric {i + 1}")
                 system_prompt = st.text_area(f"Enter the System Prompt for Metric {i + 1}:")
+                valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}")
 
-                # Validate the system prompt
-                valid_terms = ["question", "answer", "content", "reference content", "reference answer"]
-                matched_terms = [term for term in valid_terms if term in system_prompt.lower()]
-                if not system_prompt.strip() or len(matched_terms) < 2:
-                    st.error(
-                        f"For Metric {i + 1}, the system prompt must include valid criteria involving at least two of the following: {', '.join(valid_terms)}."
-                    )
-                    continue
+                if valid_prompt:
+                    # Validate the system prompt
+                    valid_terms = ["question", "answer", "content", "reference content", "reference answer"]
+                    matched_terms = [term for term in valid_terms if term in system_prompt.lower()]
+                    if not system_prompt.strip() or len(matched_terms) < 2:
+                        st.error(
+                            f"For Metric {i + 1}, the system prompt must include valid criteria involving at least two of the following: {', '.join(valid_terms)}."
+                        )
+                        continue
+                    else:
+                        st.success(f"System Prompt for Metric {i + 1} is valid.")
 
                 selected_columns = st.multiselect(
                     f"Select columns for Metric {i + 1}:",
