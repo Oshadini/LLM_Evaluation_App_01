@@ -1,4 +1,4 @@
-# Updated Code - Modified as per requirements
+# Updated Code
 import streamlit as st
 import pandas as pd
 from typing import Tuple, Dict
@@ -16,22 +16,18 @@ class prompt_with_conversation_relevence(fOpenAI):
         """
         Process the dynamically selected parameters to generate relevance feedback.
         """
-        # Dynamically construct the user prompt based on selected columns
+        # Dynamically construct the user prompt based on provided parameters and selected columns
         user_prompt = ""
-
-        # Construct user_prompt only from selected columns
-        selected_columns_mapping = {
-            "question": "Question",
-            "formatted_content": "Content",
-            "formatted_history": "Answer",
-            "formatted_reference_content": "Reference Content",
-            "formatted_reference_answer": "Reference Answer",
-        }
-
-        for key, col_name in selected_columns_mapping.items():
-            if col_name in kwargs.get("selected_columns", []):
-                user_prompt += f"{key}: {{{key}}}\n\n"
-
+        if "question" in kwargs:
+            user_prompt += "question: {question}\n\n"
+        if "formatted_history" in kwargs:
+            user_prompt += "answer: {formatted_history}\n\n"
+        if "formatted_reference_content" in kwargs:
+            user_prompt += "reference_content: {formatted_reference_content}\n\n"
+        if "formatted_reference_answer" in kwargs:
+            user_prompt += "reference_answer: {formatted_reference_answer}\n\n"
+        if "formatted_content" in kwargs:
+            user_prompt += "content: {formatted_content}\n\n"
         user_prompt += "RELEVANCE: "
 
         # Format the user prompt with the provided values
@@ -58,7 +54,7 @@ prompt_with_conversation_relevence_custom = prompt_with_conversation_relevence()
 
 # Streamlit UI
 st.title("Relevance Grader Tool")
-st.write("Upload an Excel file with columns: `Question`, `Content`, `Answer`, `Reference Content`, `Reference Answer` to evaluate relevance scores.")
+st.write("Upload an Excel file with columns: Question, Content, Answer, Reference Content, Reference Answer to evaluate relevance scores.")
 
 # Step 1: File uploader
 uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
@@ -96,7 +92,7 @@ if uploaded_file:
                     # Map selected columns to variable names
                     column_mapping = {
                         "Question": "question",
-                        "Content": "formatted_content",  # Updated for formatted_content
+                        "Content": "formatted_content",
                         "Answer": "formatted_history",
                         "Reference Content": "formatted_reference_content",
                         "Reference Answer": "formatted_reference_answer"
