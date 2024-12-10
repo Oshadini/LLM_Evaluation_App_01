@@ -12,17 +12,24 @@ session = TruSession()
 
 # Define the custom class
 class prompt_with_conversation_relevence(fOpenAI):
-    def prompt_with_conversation_relevence_feedback(self, question: str, formatted_history: str, system_prompt: str) -> Tuple[float, Dict]:
+    def prompt_with_conversation_relevence_feedback(self, **kwargs) -> Tuple[float, Dict]:
         """
-        Process the question and formatted history to generate relevance feedback.
+        Process the dynamically selected parameters to generate relevance feedback.
         """
-        # Construct the user prompt
-        user_prompt = """CHAT_GUIDANCE: {question}
+        # Dynamically construct the user prompt based on provided parameters
+        user_prompt = ""
+        if "question" in kwargs:
+            user_prompt += "CHAT_GUIDANCE: {question}\n\n"
+        if "formatted_history" in kwargs:
+            user_prompt += "CHAT_CONVERSATION: {formatted_history}\n\n"
+        if "formatted_reference_content" in kwargs:
+            user_prompt += "CHAT_REF_CONTENT: {formatted_reference_content}\n\n"
+        if "formatted_reference_answer" in kwargs:
+            user_prompt += "CHAT_REF_ANSWER: {formatted_reference_answer}\n\n"
+        user_prompt += "RELEVANCE: "
 
-        CHAT_CONVERSATION: {formatted_history}
-        
-        RELEVANCE: """
-        user_prompt = user_prompt.format(question=question, formatted_history=formatted_history)
+        # Format the user prompt with the provided values
+        user_prompt = user_prompt.format(**kwargs)
 
         # Replace RELEVANCE with additional reasoning templates
         user_prompt = user_prompt.replace(
@@ -30,7 +37,7 @@ class prompt_with_conversation_relevence(fOpenAI):
         )
 
         # Generate results
-        result = self.generate_score_and_reasons(system_prompt, user_prompt)
+        result = self.generate_score_and_reasons(kwargs["system_prompt"], user_prompt)
 
         details = result[1]
         reason = details['reason'].split('\n')
@@ -45,7 +52,7 @@ prompt_with_conversation_relevence_custom = prompt_with_conversation_relevence()
 
 # Streamlit UI
 st.title("Relevance Grader Tool")
-st.write("Upload an Excel file with columns: `question` and `answer` to evaluate relevance scores.")
+st.write("Upload an Excel file with columns: `Question`, `Content`, `Answer`, `Reference Content`, `Reference Answer` to evaluate relevance scores.")
 
 # Input for the system prompt
 system_prompt = st.text_area("Enter the System Prompt:")
@@ -58,27 +65,43 @@ if uploaded_file:
         df = pd.read_excel(uploaded_file)
 
         # Validate required columns
-        if not all(col in df.columns for col in ["question", "answer"]):
-            st.error("The uploaded file must contain `question` and `answer` columns.")
+        required_columns = ["Question", "Content", "Answer", "Reference Content", "Reference Answer"]
+        if not all(col in df.columns for col in required_columns):
+            st.error(f"The uploaded file must contain these columns: {', '.join(required_columns)}.")
         else:
             st.write("Preview of Uploaded Data:")
             st.dataframe(df.head())
 
+            # Let the user select columns
+            selected_columns = st.multiselect(
+                "Select columns to use in the prompt:",
+                options=required_columns,
+                default=["Question", "Answer"]
+            )
+
+            # Map selected columns to variable names
+            column_mapping = {
+                "Question": "question",
+                "Content": "formatted_history",
+                "Answer": "formatted_history",
+                "Reference Content": "formatted_reference_content",
+                "Reference Answer": "formatted_reference_answer"
+            }
+
             # Process each row
             results = []
             for index, row in df.iterrows():
-                # Extract question and formatted history from the file
-                question = row["question"]
-                formatted_history = row["answer"]
+                # Prepare dynamic parameters
+                params = {"system_prompt": system_prompt}
+                for col in selected_columns:
+                    if col in column_mapping:
+                        params[column_mapping[col]] = row[col]
 
                 # Generate relevance feedback
-                score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(
-                    question, formatted_history, system_prompt
-                )
+                score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
                 st.write(details)
                 results.append({
-                    "question": question,
-                    "formatted_history": formatted_history,
+                    "selected_columns": selected_columns,
                     "score": score,
                     "criteria": details["criteria"],
                     "supporting_evidence": details["supporting_evidence"]
