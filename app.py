@@ -84,7 +84,33 @@ if uploaded_file:
                     options=required_columns,
                     key=f"columns_{i}"
                 )
-                if selected_columns and system_prompt.strip():
+
+                # Validation: Ensure the system_prompt criteria match selected columns
+                if system_prompt.strip() and selected_columns:
+                    prompt_criteria = {
+                        "question": "Question" in selected_columns,
+                        "answer": "Answer" in selected_columns,
+                        "content": "Content" in selected_columns,
+                        "reference_content": "Reference Content" in selected_columns,
+                        "reference_answer": "Reference Answer" in selected_columns
+                    }
+
+                    if "question" in system_prompt.lower() and not prompt_criteria["question"]:
+                        st.error(f"For Metric {i + 1}, the selected columns must include 'Question'.")
+                        continue
+                    if "answer" in system_prompt.lower() and not prompt_criteria["answer"]:
+                        st.error(f"For Metric {i + 1}, the selected columns must include 'Answer'.")
+                        continue
+                    if "content" in system_prompt.lower() and not prompt_criteria["content"]:
+                        st.error(f"For Metric {i + 1}, the selected columns must include 'Content'.")
+                        continue
+                    if "reference content" in system_prompt.lower() and not prompt_criteria["reference_content"]:
+                        st.error(f"For Metric {i + 1}, the selected columns must include 'Reference Content'.")
+                        continue
+                    if "reference answer" in system_prompt.lower() and not prompt_criteria["reference_answer"]:
+                        st.error(f"For Metric {i + 1}, the selected columns must include 'Reference Answer'.")
+                        continue
+
                     metric_definitions.append({
                         "system_prompt": system_prompt,
                         "selected_columns": selected_columns
@@ -93,7 +119,7 @@ if uploaded_file:
             # Step 3: Generate results
             if st.button("Generate Results"):
                 if not metric_definitions:
-                    st.error("Please define at least one metric with a system prompt and selected columns.")
+                    st.error("Please define at least one metric with a valid system prompt and selected columns.")
                 else:
                     # Map column names to variable names
                     column_mapping = {
