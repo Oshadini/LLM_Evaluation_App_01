@@ -85,6 +85,7 @@ if uploaded_file:
                 score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(
                     question, formatted_history
                 )
+                st.write(details)
                 results.append({
                     "question": question,
                     "formatted_history": formatted_history,
