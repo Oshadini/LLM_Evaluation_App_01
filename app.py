@@ -54,11 +54,9 @@ prompt_with_conversation_relevence_custom = prompt_with_conversation_relevence()
 st.title("Relevance Grader Tool")
 st.write("Upload an Excel file with columns: `Question`, `Content`, `Answer`, `Reference Content`, `Reference Answer` to evaluate relevance scores.")
 
-# Input for the system prompt
-system_prompt = st.text_area("Enter the System Prompt:")
-
-# File uploader
+# Step 1: File uploader
 uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
+
 if uploaded_file:
     try:
         # Load the Excel file
@@ -72,52 +70,62 @@ if uploaded_file:
             st.write("Preview of Uploaded Data:")
             st.dataframe(df.head())
 
-            # Let the user select columns
+            # Step 2: Input for the system prompt
+            system_prompt = st.text_area("Enter the System Prompt:")
+
+            # Step 3: Let the user select columns
             selected_columns = st.multiselect(
                 "Select columns to use in the prompt:",
                 options=required_columns,
                 default=["Question", "Answer"]
             )
 
-            # Map selected columns to variable names
-            column_mapping = {
-                "Question": "question",
-                "Content": "formatted_history",
-                "Answer": "formatted_history",
-                "Reference Content": "formatted_reference_content",
-                "Reference Answer": "formatted_reference_answer"
-            }
+            # Step 4: Add a button to generate results
+            if st.button("Generate Results"):
+                if system_prompt.strip() == "":
+                    st.error("Please enter the system prompt.")
+                elif not selected_columns:
+                    st.error("Please select at least one column.")
+                else:
+                    # Map selected columns to variable names
+                    column_mapping = {
+                        "Question": "question",
+                        "Content": "formatted_history",
+                        "Answer": "formatted_history",
+                        "Reference Content": "formatted_reference_content",
+                        "Reference Answer": "formatted_reference_answer"
+                    }
 
-            # Process each row
-            results = []
-            for index, row in df.iterrows():
-                # Prepare dynamic parameters
-                params = {"system_prompt": system_prompt}
-                for col in selected_columns:
-                    if col in column_mapping:
-                        params[column_mapping[col]] = row[col]
+                    # Process each row
+                    results = []
+                    for index, row in df.iterrows():
+                        # Prepare dynamic parameters
+                        params = {"system_prompt": system_prompt}
+                        for col in selected_columns:
+                            if col in column_mapping:
+                                params[column_mapping[col]] = row[col]
 
-                # Generate relevance feedback
-                score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
-                st.write(details)
-                results.append({
-                    "selected_columns": selected_columns,
-                    "score": score,
-                    "criteria": details["criteria"],
-                    "supporting_evidence": details["supporting_evidence"]
-                })
+                        # Generate relevance feedback
+                        score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
+                        st.write(details)
+                        results.append({
+                            "selected_columns": selected_columns,
+                            "score": score,
+                            "criteria": details["criteria"],
+                            "supporting_evidence": details["supporting_evidence"]
+                        })
 
-            # Convert results to DataFrame
-            results_df = pd.DataFrame(results)
-            st.write("Results:")
-            st.dataframe(results_df)
+                    # Convert results to DataFrame
+                    results_df = pd.DataFrame(results)
+                    st.write("Results:")
+                    st.dataframe(results_df)
 
-            # Download results as CSV
-            st.download_button(
-                label="Download Results as CSV",
-                data=results_df.to_csv(index=False),
-                file_name="relevance_results.csv",
-                mime="text/csv",
-            )
+                    # Download results as CSV
+                    st.download_button(
+                        label="Download Results as CSV",
+                        data=results_df.to_csv(index=False),
+                        file_name="relevance_results.csv",
+                        mime="text/csv",
+                    )
     except Exception as e:
         st.error(f"An error occurred: {e}")
