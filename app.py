@@ -140,7 +140,7 @@ if uploaded_file:
                             mime="text/csv",
                         )
             else:
-                st.error("Please select at least one column.")
+                st.error("Please select at least two columns.")
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
