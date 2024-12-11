@@ -65,7 +65,7 @@ def generate_system_prompt(selected_columns: list) -> str:
         prompt=prompt,
         max_tokens=1024
     )
-    return response.choices[0].text.strip()
+    return response.choices[0].message.content.strip()
 
 # Streamlit UI
 st.title("LLM Evaluation Tool")
