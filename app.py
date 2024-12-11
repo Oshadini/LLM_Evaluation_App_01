@@ -172,6 +172,7 @@ if uploaded_file:
 
                         for index, row in df.iterrows():
                             params = {"system_prompt": system_prompt}
+                            st.write(params)
                             for col in selected_columns:
                                 if col in column_mapping:
                                     params[column_mapping[col]] = row[col]
