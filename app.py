@@ -1,7 +1,6 @@
 # Updated Code with Correct OpenAI GPT-4 API Integration
 import streamlit as st
 import pandas as pd
-import re
 from typing import Tuple, Dict
 from trulens.core import Feedback
 from trulens.providers.openai import OpenAI as fOpenAI
@@ -102,21 +101,10 @@ if uploaded_file:
                         try:
                             selected_column_names = ", ".join(selected_columns)
                             completion = openai.chat.completions.create(
-                                model="gpt-4o",  # Correct model name
+                                model="gpt-4o",
                                 messages=[
                                     {"role": "system", "content": "You are a helpful assistant generating system prompts."},
-                                    {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names} and follow the given sample system prompt - You are a RELEVANCE grader; providing the relevance of the given question to the given answer.
-            Respond only as a number from 0 to 10 where 0 is the least relevant and 10 is the most relevant. 
-
-            A few additional scoring guidelines,
-            Long answer should score equally well as short answer.
-            RELEVANCE score should increase as the answer provides more RELEVANT context to the  question.
-            RELEVANCE score should increase as the answer provides RELEVANT context to more parts of the  question.
-            answer that is RELEVANT to some of the question should score of 2, 3 or 4. Higher score indicates more RELEVANCE.
-            answer that is RELEVANT to most of the question should get a score of 5, 6, 7 or 8. Higher score indicates more RELEVANCE.
-            answer that is RELEVANT to the entire question should get a score of 9 or 10. Higher score indicates more RELEVANCE.
-            answer must be relevant and helpful for answering the entire question to get a score of 10.
-            Never elaborate."}
+                                    {"role": "user", "content": "You are a RELEVANCE grader; providing the relevance of the given question to the given answer.\nRespond only as a number from 0 to 10 where 0 is the least relevant and 10 is the most relevant.\n\nA few additional scoring guidelines:\n- Long answer should score equally well as short answer.\n- RELEVANCE score should increase as the answer provides more RELEVANT context to the  question.\n- RELEVANCE score should increase as the answer provides RELEVANT context to more parts of the  question.\n- answer that is RELEVANT to some of the question should score of 2, 3 or 4. Higher score indicates more RELEVANCE.\n- answer that is RELEVANT to most of the question should get a score of 5, 6, 7 or 8. Higher score indicates more RELEVANCE.\n- answer that is RELEVANT to the entire question should get a score of 9 or 10. Higher score indicates more RELEVANCE.\n- answer must be relevant and helpful for answering the entire question to get a score of 10.\n- Never elaborate."}
                                 ],
                                 max_tokens=200
                             )
@@ -145,8 +133,7 @@ if uploaded_file:
                     }
                     errors = []
                     for term, original_column in selected_column_terms.items():
-                        term_pattern = f"\\b{term.replace('_', ' ')}\\b"
-                        if not re.search(term_pattern, system_prompt, re.IGNORECASE):
+                        if not any(f"\b{term}\b" in system_prompt.lower() for term in selected_column_terms):
                             errors.append(f"'{original_column}' needs to be included as '{term.replace('_', ' ')}' in the system prompt.")
 
                     if errors:
@@ -164,6 +151,7 @@ if uploaded_file:
                 })
 
                 st.markdown("</div>", unsafe_allow_html=True)
+
 
             if st.button("Generate Results"):
                 if not metric_definitions:
