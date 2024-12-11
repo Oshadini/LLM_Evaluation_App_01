@@ -96,30 +96,34 @@ if uploaded_file:
 
                 # Store system prompts in session state to ensure they remain user-controlled
                 prompt_key = f"system_prompt_{i}"
-                if toggle_prompt:
-                    if prompt_key not in st.session_state:
-                        try:
-                            selected_column_names = ", ".join(selected_columns)
-                            completion = openai.chat.completions.create(
-                                model="gpt-4o",  # Correct model name
-                                messages=[
-                                    {"role": "system", "content": "You are a helpful assistant generating system prompts."},
-                                    {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}."}
-                                ],
-                                max_tokens=200
-                            )
-                            st.session_state[prompt_key] = completion.choices[0].message.content.strip()
-                        except Exception as e:
-                            st.error(f"Error generating system prompt: {e}")
+                if toggle_prompt and prompt_key not in st.session_state:
+                    try:
+                        selected_column_names = ", ".join(selected_columns)
+                        completion = openai.ChatCompletion.create(
+                            model="gpt-4",  # Correct model name
+                            messages=[
+                                {"role": "system", "content": "You are a helpful assistant generating system prompts."},
+                                {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}."}
+                            ],
+                            max_tokens=200
+                        )
+                        # Generate and store the system prompt
+                        st.session_state[prompt_key] = completion.choices[0].message.content.strip()
+                    except Exception as e:
+                        st.error(f"Error generating system prompt: {e}")
                 elif prompt_key not in st.session_state:
                     st.session_state[prompt_key] = ""
 
-                # Update the text area to reflect the current session state
-                st.session_state[prompt_key] = st.text_area(
+                # Display the text area with the current system prompt value
+                system_prompt = st.text_area(
                     f"System Prompt for Metric {i + 1}:",
                     value=st.session_state[prompt_key],
-                    height=200
+                    height=200,
+                    key=f"text_area_{i}"
                 )
+
+                # Update the session state with any edits made by the user
+                st.session_state[prompt_key] = system_prompt
 
                 valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}", key=f"validate_{i}")
 
