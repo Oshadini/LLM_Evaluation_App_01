@@ -73,7 +73,7 @@ if uploaded_file:
                 with st.container():
                     st.markdown(
                         f"""
-                        <div style="border: 2px solid black; padding: 15px; margin-bottom: 15px; border-radius: 5px; background-color: #f9f9f9;">
+                        <div style="border: 2px solid black; padding: 150px; margin-bottom: 150px; border-radius: 5px; background-color: #f9f9f9;">
                         <h4 style="margin-top: 0;">Metric {i + 1}</h4>
                         """,
                         unsafe_allow_html=True,
