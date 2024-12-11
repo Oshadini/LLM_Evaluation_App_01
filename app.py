@@ -1,4 +1,4 @@
-# Updated Code to Add Border Around Each Metric Section
+# Updated Code with Proper Separation for Metrics
 import streamlit as st
 import pandas as pd
 from typing import Tuple, Dict
@@ -69,56 +69,57 @@ if uploaded_file:
 
             metric_definitions = []
             for i in range(num_metrics):
-                # Start a bordered section for each metric
-                st.markdown(
-                    f"""
-                    <div style="border: 2px solid black; padding: 15px; margin-bottom: 15px; border-radius: 5px;">
-                    """, unsafe_allow_html=True)
+                # Use a container to properly separate each metric
+                with st.container():
+                    st.markdown(
+                        f"""
+                        <div style="border: 2px solid black; padding: 15px; margin-bottom: 15px; border-radius: 5px; background-color: #f9f9f9;">
+                        <h4 style="margin-top: 0;">Metric {i + 1}</h4>
+                        """,
+                        unsafe_allow_html=True,
+                    )
 
-                st.subheader(f"Metric {i + 1}")
+                    selected_columns = st.multiselect(
+                        f"Select columns for Metric {i + 1}:",
+                        options=required_columns[1:],  # Exclude "Index"
+                        key=f"columns_{i}"
+                    )
 
-                selected_columns = st.multiselect(
-                    f"Select columns for Metric {i + 1}:",
-                    options=required_columns[1:],  # Exclude "Index"
-                    key=f"columns_{i}"
-                )
+                    system_prompt = st.text_area(
+                        f"Enter the System Prompt for Metric {i + 1}:",
+                        height=200  # Double the default height
+                    )
+                    valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}")
 
-                system_prompt = st.text_area(
-                    f"Enter the System Prompt for Metric {i + 1}:",
-                    height=200  # Double the default height
-                )
-                valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}")
-
-                if len(selected_columns) < 1:
-                    st.error(f"For Metric {i + 1}, you must select at least one column.")
-                    continue
-
-                if valid_prompt:
-                    selected_column_terms = {
-                        col.lower().replace(" ", "_"): col
-                        for col in selected_columns
-                    }
-                    errors = []
-                    for term, original_column in selected_column_terms.items():
-                        if term not in system_prompt.lower():
-                            errors.append(f"'{original_column}' needs to be included as '{term.replace('_', ' ')}' in the system prompt.")
-
-                    if errors:
-                        st.error(
-                            f"For Metric {i + 1}, the following errors were found in your system prompt: "
-                            f"{'; '.join(errors)}"
-                        )
+                    if len(selected_columns) < 1:
+                        st.error(f"For Metric {i + 1}, you must select at least one column.")
                         continue
-                    else:
-                        st.success(f"System Prompt for Metric {i + 1} is valid.")
 
-                metric_definitions.append({
-                    "system_prompt": system_prompt,
-                    "selected_columns": selected_columns
-                })
+                    if valid_prompt:
+                        selected_column_terms = {
+                            col.lower().replace(" ", "_"): col
+                            for col in selected_columns
+                        }
+                        errors = []
+                        for term, original_column in selected_column_terms.items():
+                            if term not in system_prompt.lower():
+                                errors.append(f"'{original_column}' needs to be included as '{term.replace('_', ' ')}' in the system prompt.")
 
-                # End the bordered section for each metric
-                st.markdown("</div>", unsafe_allow_html=True)
+                        if errors:
+                            st.error(
+                                f"For Metric {i + 1}, the following errors were found in your system prompt: "
+                                f"{'; '.join(errors)}"
+                            )
+                            continue
+                        else:
+                            st.success(f"System Prompt for Metric {i + 1} is valid.")
+
+                    metric_definitions.append({
+                        "system_prompt": system_prompt,
+                        "selected_columns": selected_columns
+                    })
+
+                    st.markdown("</div>", unsafe_allow_html=True)
 
             if st.button("Generate Results"):
                 if not metric_definitions:
