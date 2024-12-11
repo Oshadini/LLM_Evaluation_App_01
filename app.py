@@ -72,8 +72,17 @@ if uploaded_file:
             num_metrics = st.number_input("Enter the number of metrics you want to define:", min_value=1, step=1)
 
             metric_definitions = []
+            colors = ["#FFCCCC", "#CCE5FF", "#D5F5E3", "#F9E79F", "#FAD7A0"]  # Background colors for metrics
+            
             for i in range(num_metrics):
-                st.markdown(f"### Metric {i + 1}")
+                bg_color = colors[i % len(colors)]
+                st.markdown(
+                    f"""
+                    <div style="border: 2px solid #0073e6; background-color: {bg_color}; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+                    <h3 style="margin-top: 0;">Metric {i + 1}</h3>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
                 selected_columns = st.multiselect(
                     f"Select columns for Metric {i + 1}:",
@@ -186,5 +195,7 @@ if uploaded_file:
                             results.append(result_row)
                         st.write(f"Results for Metric {i + 1}:")
                         st.dataframe(pd.DataFrame(results))
+
+                st.markdown("</div>", unsafe_allow_html=True)  # Close the bordered section
     except Exception as e:
         st.error(f"An error occurred: {e}")
