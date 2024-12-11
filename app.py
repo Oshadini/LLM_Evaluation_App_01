@@ -94,41 +94,102 @@ if uploaded_file:
                     f"Automatically generate system prompt for Metric {i + 1}?", key=f"toggle_prompt_{i}"
                 )
 
-                # Handle system prompt generation or user input
+                prompt_key = f"system_prompt_{i}"
                 system_prompt = ""
+
+                # Automatically generated prompt
                 if toggle_prompt:
                     if len(selected_columns) < 1:
                         st.error(f"For Metric {i + 1}, please select at least one column.")
                     else:
                         try:
-                            selected_column_names = ", ".join(selected_columns)
-                            completion = openai.chat.completions.create(
-                                model="gpt-4o",  # Correct model name
-                                messages=[
-                                    {"role": "system", "content": "You are a helpful assistant generating system prompts."},
-                                    {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}."}
-                                ],
-                                max_tokens=200
-                            )
-                            system_prompt = completion.choices[0].message.content.strip()
+                            if prompt_key not in st.session_state:
+                                selected_column_names = ", ".join(selected_columns)
+                                completion = openai.chat.completions.create(
+                                    model="gpt-4o",
+                                    messages=[
+                                        {"role": "system", "content": "You are a helpful assistant generating system prompts."},
+                                        {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}."}
+                                    ],
+                                    max_tokens=200
+                                )
+                                st.session_state[prompt_key] = completion.choices[0].message.content.strip()
+
+                            system_prompt = st.session_state[prompt_key]
+
+                            # Display the generated prompt
                             st.text_area(
-                                f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=200
+                                f"System Prompt for Metric {i + 1}:", value=system_prompt, height=200, key=f"text_area_{i}"
                             )
-                            st.success(f"Generated System Prompt for Metric {i + 1} validated successfully.")
-                        except Exception as e:
-                            st.error(f"Error generating system prompt: {e}")
+
+                            # Validate and generate results automatically
+                            selected_column_terms = {
+                                col.lower().replace(" ", "_"): col
+                                for col in selected_columns
+                            }
+                            errors = []
+                            for term, original_column in selected_column_terms.items():
+                                term_pattern = f"\\b{term.replace('_', ' ')}\\b"
+                                if not re.search(term_pattern, system_prompt, re.IGNORECASE):
+                                    errors.append(f"'{original_column}' needs to be included as '{term.replace('_', ' ')}' in the system prompt.")
+
+                            if errors:
+                                st.error(
+                                    f"For Metric {i + 1}, the following errors were found in your system prompt: "
+                                    f"{'; '.join(errors)}"
+                                )
+                            else:
+                                st.success(f"System Prompt for Metric {i + 1} is valid.")
+
+                                # Generate results
+                                results = []
+                                column_mapping = {
+                                    "Question": "question",
+                                    "Content": "formatted_content",
+                                    "Answer": "formatted_history",
+                                    "Reference Content": "formatted_reference_content",
+                                    "Reference Answer": "formatted_reference_answer"
+                                }
+                                for index, row in df.iterrows():
+                                    params = {"system_prompt": system_prompt}
+                                    for col in selected_columns:
+                                        if col in column_mapping:
+                                            params[column_mapping[col]] = row[col]
+
+                                    score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
+
+                                    result_row = {
+                                        "Index": row["Index"],  # Maintain Index column
+                                        "Metric": f"Metric {i + 1}",
+                                        "Selected Columns": ", ".join(selected_columns),
+                                        "Score": score,
+                                        "Criteria": details["criteria"],
+                                        "Supporting Evidence": details["supporting_evidence"]
+                                    }
+
+                                    for col in required_columns:
+                                        if col != "Index":
+                                            result_row[col] = row[col]
+
+                                    results.append(result_row)
+
+                                results_df = pd.DataFrame(results)
+                                st.write("Results for Metric {i + 1}:")
+                                st.dataframe(results_df)
+
+                # Manually entered prompt
                 else:
                     system_prompt = st.text_area(
-                        f"Enter the System Prompt for Metric {i + 1}:",
-                        height=200
+                        f"System Prompt for Metric {i + 1}:",
+                        value=st.session_state.get(prompt_key, ""),
+                        height=200,
+                        key=f"text_area_{i}"
                     )
+                    st.session_state[prompt_key] = system_prompt
 
-                valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}", key=f"validate_{i}")
+                    valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}", key=f"validate_{i}")
 
-                if valid_prompt:
-                    if toggle_prompt:
-                        st.success(f"Automatically generated system prompt for Metric {i + 1} is valid.")
-                    else:
+                    if valid_prompt:
                         selected_column_terms = {
                             col.lower().replace(" ", "_"): col
                             for col in selected_columns
@@ -145,65 +206,8 @@ if uploaded_file:
                                 f"{'; '.join(errors)}"
                             )
                         else:
-                            st.success(f"Manually entered system prompt for Metric {i + 1} is valid.")
-
-                metric_definitions.append({
-                    "system_prompt": system_prompt,
-                    "selected_columns": selected_columns,
-                    "is_auto_generated": toggle_prompt
-                })
-
+                            st.success(f"System Prompt for Metric {i + 1} is valid.")
                 st.markdown("</div>", unsafe_allow_html=True)
 
-            if st.button("Generate Results"):
-                if not metric_definitions:
-                    st.error("Please define at least one metric with a valid system prompt and selected columns.")
-                else:
-                    column_mapping = {
-                        "Question": "question",
-                        "Content": "formatted_content",
-                        "Answer": "formatted_history",
-                        "Reference Content": "formatted_reference_content",
-                        "Reference Answer": "formatted_reference_answer"
-                    }
-
-                    results = []
-                    for metric_index, metric in enumerate(metric_definitions, start=1):
-                        system_prompt = metric["system_prompt"]
-                        selected_columns = metric["selected_columns"]
-
-                        for index, row in df.iterrows():
-                            params = {"system_prompt": system_prompt}
-                            for col in selected_columns:
-                                if col in column_mapping:
-                                    params[column_mapping[col]] = row[col]
-
-                            score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
-
-                            result_row = {
-                                "Index": row["Index"],  # Maintain Index column
-                                "Metric": f"Metric {metric_index} ({'Auto' if metric['is_auto_generated'] else 'Manual'})",
-                                "Selected Columns": ", ".join(selected_columns),
-                                "Score": score,
-                                "Criteria": details["criteria"],
-                                "Supporting Evidence": details["supporting_evidence"]
-                            }
-
-                            for col in required_columns:
-                                if col != "Index":
-                                    result_row[col] = row[col]
-
-                            results.append(result_row)
-
-                    results_df = pd.DataFrame(results)
-                    st.write("Results:")
-                    st.dataframe(results_df)
-
-                    st.download_button(
-                        label="Download Results as CSV",
-                        data=results_df.to_csv(index=False),
-                        file_name="relevance_results.csv",
-                        mime="text/csv",
-                    )
     except Exception as e:
         st.error(f"An error occurred: {e}")
