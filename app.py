@@ -94,17 +94,19 @@ if uploaded_file:
                     f"Automatically generate system prompt for Metric {i + 1}?", key=f"toggle_prompt_{i}"
                 )
 
+                auto_generated_prompt = ""
+
                 if toggle_prompt:
                     if len(selected_columns) < 1:
                         st.error(f"For Metric {i + 1}, please select at least one column.")
                     else:
                         try:
                             selected_column_names = ", ".join(selected_columns)
-                            completion = openai.chat.completions.create(
+                            completion = openai.ChatCompletion.create(
                                 model="gpt-4o",
                                 messages=[
-                                    {"role": "system", "content": "You are a helpful assistant generating system prompts."},
-                                    {"role": "user", "content": "You are a RELEVANCE grader; providing the relevance of the given question to the given answer.\nRespond only as a number from 0 to 10 where 0 is the least relevant and 10 is the most relevant.\n\nA few additional scoring guidelines:\n- Long answer should score equally well as short answer.\n- RELEVANCE score should increase as the answer provides more RELEVANT context to the  question.\n- RELEVANCE score should increase as the answer provides RELEVANT context to more parts of the  question.\n- answer that is RELEVANT to some of the question should score of 2, 3 or 4. Higher score indicates more RELEVANCE.\n- answer that is RELEVANT to most of the question should get a score of 5, 6, 7 or 8. Higher score indicates more RELEVANCE.\n- answer that is RELEVANT to the entire question should get a score of 9 or 10. Higher score indicates more RELEVANCE.\n- answer must be relevant and helpful for answering the entire question to get a score of 10.\n- Never elaborate."}
+                                    {"role": "system", "content": "You are a RELEVANCE grader; providing the relevance of the given question to the given answer.\nRespond only as a number from 0 to 10 where 0 is the least relevant and 10 is the most relevant. \n\nA few additional scoring guidelines:\n- Long answer should score equally well as short answer.\n- RELEVANCE score should increase as the answer provides more RELEVANT context to the  question.\n- RELEVANCE score should increase as the answer provides RELEVANT context to more parts of the  question.\n- answer that is RELEVANT to some of the question should score of 2, 3 or 4. Higher score indicates more RELEVANCE.\n- answer that is RELEVANT to most of the question should get a score of 5, 6, 7 or 8. Higher score indicates more RELEVANCE.\n- answer that is RELEVANT to the entire question should get a score of 9 or 10. Higher score indicates more RELEVANCE.\n- answer must be relevant and helpful for answering the entire question to get a score of 10.\n- Never elaborate."},
+                                    {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns.: {selected_column_names}"}
                                 ],
                                 max_tokens=200
                             )
@@ -133,7 +135,7 @@ if uploaded_file:
                     }
                     errors = []
                     for term, original_column in selected_column_terms.items():
-                        if not any(f"\b{term}\b" in system_prompt.lower() for term in selected_column_terms):
+                        if term not in system_prompt.lower():
                             errors.append(f"'{original_column}' needs to be included as '{term.replace('_', ' ')}' in the system prompt.")
 
                     if errors:
@@ -145,12 +147,38 @@ if uploaded_file:
                     else:
                         st.success(f"System Prompt for Metric {i + 1} is valid.")
 
+                # Display system prompt (either auto-generated or user-entered) for user to view
+                if toggle_prompt:
+                    st.text_area(
+                        f"Final System Prompt for Metric {i + 1}:", value=auto_generated_prompt, height=200
+                    )
+                else:
+                    st.text_area(
+                        f"Final System Prompt for Metric {i + 1}:", value=system_prompt, height=200
+                    )
+
                 metric_definitions.append({
                     "system_prompt": auto_generated_prompt if toggle_prompt else system_prompt,
                     "selected_columns": selected_columns
                 })
 
                 st.markdown("</div>", unsafe_allow_html=True)
+
+            if st.button("Generate Results"):
+                if not metric_definitions:
+                    st.error("Please define at least one metric with a valid system prompt and selected columns.")
+                else:
+                    column_mapping = {
+                        "Question": "question",
+                        "Content": "formatted_content",
+                        "Answer": "formatted_history",
+                        "Reference Content": "formatted_reference_content",
+                        "Reference Answer": "formatted_reference_answer"
+                    }
+
+                    results = []
+                    for metric_index, metric in enumerate(metric_definitions, start
+
 
 
             if st.button("Generate Results"):
