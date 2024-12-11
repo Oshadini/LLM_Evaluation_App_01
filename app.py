@@ -100,8 +100,8 @@ if uploaded_file:
                     if prompt_key not in st.session_state:
                         try:
                             selected_column_names = ", ".join(selected_columns)
-                            completion = openai.chat.completions.create(
-                                model="gpt-4o",  # Correct model name
+                            completion = openai.ChatCompletion.create(
+                                model="gpt-4",  # Correct model name
                                 messages=[
                                     {"role": "system", "content": "You are a helpful assistant generating system prompts."},
                                     {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}."}
@@ -114,7 +114,8 @@ if uploaded_file:
                 elif prompt_key not in st.session_state:
                     st.session_state[prompt_key] = ""
 
-                system_prompt = st.text_area(
+                # Update the text area to reflect the current session state
+                st.session_state[prompt_key] = st.text_area(
                     f"System Prompt for Metric {i + 1}:",
                     value=st.session_state[prompt_key],
                     height=200
@@ -130,7 +131,7 @@ if uploaded_file:
                     errors = []
                     for term, original_column in selected_column_terms.items():
                         term_pattern = f"\\b{term.replace('_', ' ')}\\b"
-                        if not re.search(term_pattern, system_prompt, re.IGNORECASE):
+                        if not re.search(term_pattern, st.session_state[prompt_key], re.IGNORECASE):
                             errors.append(f"'{original_column}' needs to be included as '{term.replace('_', ' ')}' in the system prompt.")
 
                     if errors:
