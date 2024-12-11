@@ -203,6 +203,6 @@ if uploaded_file:
                         file_name="relevance_results.csv",
                         mime="text/csv",
                     )
-                    )
+                    
     except Exception as e:
         st.error(f"An error occurred: {e}")
