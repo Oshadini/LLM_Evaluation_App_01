@@ -1,4 +1,4 @@
-# Adjusted Code to Fix Metric Validation Issue
+# Corrected Code to Fix "Reference Content" Validation Error
 import streamlit as st
 import pandas as pd
 from typing import Tuple, Dict
@@ -30,11 +30,13 @@ class prompt_with_conversation_relevence(fOpenAI):
         user_prompt += "RELEVANCE: "
 
         user_prompt = user_prompt.format(**kwargs)
+
         user_prompt = user_prompt.replace(
             "RELEVANCE:", prompts.COT_REASONS_TEMPLATE
         )
 
         result = self.generate_score_and_reasons(kwargs["system_prompt"], user_prompt)
+
         details = result[1]
         reason = details['reason'].split('\n')
         criteria = reason[0].split(': ')[1]
@@ -50,12 +52,12 @@ prompt_with_conversation_relevence_custom = prompt_with_conversation_relevence()
 st.title("LLM Evaluation Tool")
 st.write("Upload an Excel file with columns: Question, Content, Answer, Reference Content, Reference Answer to evaluate relevance scores.")
 
-# Step 1: File uploader
 uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
 
 if uploaded_file:
     try:
         df = pd.read_excel(uploaded_file)
+
         required_columns = ["Question", "Content", "Answer", "Reference Content", "Reference Answer"]
         if not all(col in df.columns for col in required_columns):
             st.error(f"The uploaded file must contain these columns: {', '.join(required_columns)}.")
@@ -75,52 +77,36 @@ if uploaded_file:
                     key=f"columns_{i}"
                 )
 
-                if len(selected_columns) < 2:
-                    st.error(f"For Metric {i + 1}, you must select at least two columns.")
+                system_prompt = st.text_area(f"Enter the System Prompt for Metric {i + 1}:")
+                valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}")
+
+                if len(selected_columns) < 1:
+                    st.error(f"For Metric {i + 1}, you must select at least one column.")
                     continue
 
-                system_prompt = st.text_area(f"Enter the System Prompt for Metric {i + 1}:")
-                valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}", key=f"validate_{i}")
-
-                valid_terms = ["question", "answer", "content", "reference content", "reference answer"]
-                matched_terms = [term for term in valid_terms if term in system_prompt.lower()]
-
-                if "reference answer" in system_prompt.lower():
-                    matched_terms = [term for term in matched_terms if term != "answer"]
-
-                if "reference content" in system_prompt.lower():
-                    matched_terms = [term for term in matched_terms if term != "content"]
-
                 if valid_prompt:
-                    if not system_prompt.strip():
-                        st.error(f"For Metric {i + 1}, the system prompt cannot be empty.")
-                        continue
-
-                    column_mapping = {
-                        "question": "Question",
-                        "answer": "Answer",
-                        "content": "Content",
-                        "reference content": "Reference Content",
-                        "reference answer": "Reference Answer"
+                    selected_column_terms = {
+                        col.lower().replace(" ", "_"): col
+                        for col in selected_columns
                     }
+                    errors = []
+                    for term, original_column in selected_column_terms.items():
+                        if term not in system_prompt.lower():
+                            errors.append(f"'{original_column}' needs to be included as '{term.replace('_', ' ')}' in the system prompt.")
 
-                    missing_terms = []
-                    for term in matched_terms:
-                        if column_mapping[term] not in selected_columns:
-                            missing_terms.append(term)
-
-                    if missing_terms:
-                        missing_columns = [column_mapping[term] for term in missing_terms]
+                    if errors:
                         st.error(
-                            f"For Metric {i + 1}, the system prompt references '{', '.join(missing_terms)}', "
-                            f"but you need to select these columns: {', '.join(missing_columns)}."
+                            f"For Metric {i + 1}, the following errors were found in your system prompt: "
+                            f"{'; '.join(errors)}"
                         )
+                        continue
                     else:
                         st.success(f"System Prompt for Metric {i + 1} is valid.")
-                        metric_definitions.append({
-                            "system_prompt": system_prompt,
-                            "selected_columns": selected_columns
-                        })
+
+                metric_definitions.append({
+                    "system_prompt": system_prompt,
+                    "selected_columns": selected_columns
+                })
 
             if st.button("Generate Results"):
                 if not metric_definitions:
@@ -146,6 +132,7 @@ if uploaded_file:
                                     params[column_mapping[col]] = row[col]
 
                             score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
+
                             results.append({
                                 "Metric": f"Metric {metric_index}",
                                 "Selected Columns": ", ".join(selected_columns),
