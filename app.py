@@ -10,7 +10,7 @@ import openai
 
 # Initialize the session
 session = TruSession()
-f
+
 # Set OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
