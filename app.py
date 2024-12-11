@@ -160,5 +160,31 @@ if uploaded_file:
                         else:
                             st.success(f"System Prompt for Metric {i + 1} is valid.")
 
+                    if st.button(f"Generate Results for Metric {i + 1}", key=f"generate_results_{i}"):
+                        column_mapping = {
+                            "Question": "question",
+                            "Content": "formatted_content",
+                            "Answer": "formatted_history",
+                            "Reference Content": "formatted_reference_content",
+                            "Reference Answer": "formatted_reference_answer"
+                        }
+                        results = []
+                        for index, row in df.iterrows():
+                            params = {"system_prompt": system_prompt}
+                            for col in selected_columns:
+                                if col in column_mapping:
+                                    params[column_mapping[col]] = row[col]
+
+                            score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
+                            result_row = {
+                                "Index": row["Index"],
+                                "Metric": f"Metric {i + 1}",
+                                "Score": score,
+                                "Criteria": details["criteria"],
+                                "Supporting Evidence": details["supporting_evidence"]
+                            }
+                            results.append(result_row)
+                        st.write(f"Results for Metric {i + 1}:")
+                        st.dataframe(pd.DataFrame(results))
     except Exception as e:
         st.error(f"An error occurred: {e}")
