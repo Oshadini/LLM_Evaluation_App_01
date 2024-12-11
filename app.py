@@ -12,7 +12,7 @@ import openai  # Added OpenAI library
 session = TruSession()
 
 # Set your OpenAI API key
-openai.api_key = "YOUR_OPENAI_API_KEY"
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Define the custom class
 class prompt_with_conversation_relevence(fOpenAI):
