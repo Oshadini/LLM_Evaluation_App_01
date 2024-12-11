@@ -1,4 +1,4 @@
-# Corrected Code to Fix "Reference Content" Validation Error
+# Updated Code to Add Border Around Each Metric Section
 import streamlit as st
 import pandas as pd
 from typing import Tuple, Dict
@@ -69,7 +69,12 @@ if uploaded_file:
 
             metric_definitions = []
             for i in range(num_metrics):
-                st.markdown(f"<div style='border: 2px solid black; padding: 10px;'>", unsafe_allow_html=True)
+                # Start a bordered section for each metric
+                st.markdown(
+                    f"""
+                    <div style="border: 2px solid black; padding: 15px; margin-bottom: 15px; border-radius: 5px;">
+                    """, unsafe_allow_html=True)
+
                 st.subheader(f"Metric {i + 1}")
 
                 selected_columns = st.multiselect(
@@ -112,6 +117,7 @@ if uploaded_file:
                     "selected_columns": selected_columns
                 })
 
+                # End the bordered section for each metric
                 st.markdown("</div>", unsafe_allow_html=True)
 
             if st.button("Generate Results"):
