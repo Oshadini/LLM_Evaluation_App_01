@@ -97,7 +97,7 @@ if uploaded_file:
                         # Call OpenAI API to generate a prompt based on selected columns
                         try:
                             prompt_response = openai.ChatCompletion.create(
-                                model="gpt-4",
+                                model="gpt-4o",
                                 messages=[
                                     {"role": "system", "content": "Generate a system prompt for relevance checking."},
                                     {"role": "user", "content": f"Generate a prompt to check relevance for the following columns: {', '.join(selected_columns)}."}
