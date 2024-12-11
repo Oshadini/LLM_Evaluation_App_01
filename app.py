@@ -1,4 +1,3 @@
-# Updated Code with Correct OpenAI GPT-4 API Integration
 import streamlit as st
 import pandas as pd
 import re
@@ -95,23 +94,24 @@ if uploaded_file:
                     f"Automatically generate system prompt for Metric {i + 1}?", key=f"toggle_prompt_{i}"
                 )
 
+                system_prompt = ""
                 if toggle_prompt:
                     if len(selected_columns) < 1:
                         st.error(f"For Metric {i + 1}, please select at least one column.")
                     else:
                         try:
                             selected_column_names = ", ".join(selected_columns)
-                            completion = openai.chat.completions.create(
-                                model="gpt-4o",  # Correct model name
+                            completion = openai.ChatCompletion.create(
+                                model="gpt-4",  # Correct model name
                                 messages=[
                                     {"role": "system", "content": "You are a helpful assistant generating system prompts."},
                                     {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}."}
                                 ],
                                 max_tokens=200
                             )
-                            auto_generated_prompt = completion.choices[0].message.content.strip()
+                            system_prompt = completion.choices[0].message.content.strip()
                             st.text_area(
-                                f"Generated System Prompt for Metric {i + 1}:", value=auto_generated_prompt, height=200
+                                f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=200
                             )
                         except Exception as e:
                             st.error(f"Error generating system prompt: {e}")
@@ -123,11 +123,7 @@ if uploaded_file:
 
                 valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}", key=f"validate_{i}")
 
-                if len(selected_columns) < 1:
-                    st.error(f"For Metric {i + 1}, you must select at least one column.")
-                    continue
-
-                if valid_prompt and not toggle_prompt:
+                if valid_prompt:
                     selected_column_terms = {
                         col.lower().replace(" ", "_"): col
                         for col in selected_columns
@@ -143,12 +139,11 @@ if uploaded_file:
                             f"For Metric {i + 1}, the following errors were found in your system prompt: "
                             f"{'; '.join(errors)}"
                         )
-                        continue
                     else:
                         st.success(f"System Prompt for Metric {i + 1} is valid.")
 
                 metric_definitions.append({
-                    "system_prompt": auto_generated_prompt if toggle_prompt else system_prompt,
+                    "system_prompt": system_prompt,
                     "selected_columns": selected_columns
                 })
 
