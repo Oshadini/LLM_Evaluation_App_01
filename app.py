@@ -10,7 +10,7 @@ import openai
 
 # Initialize the session
 session = TruSession()
-
+f
 # Set OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
@@ -102,8 +102,8 @@ if uploaded_file:
                     else:
                         try:
                             selected_column_names = ", ".join(selected_columns)
-                            completion = openai.ChatCompletion.create(
-                                model="gpt-4",  # Correct model name
+                            completion = openai.chat.completions.create(
+                                model="gpt-4o",  # Correct model name
                                 messages=[
                                     {"role": "system", "content": "You are a helpful assistant generating system prompts."},
                                     {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}."}
