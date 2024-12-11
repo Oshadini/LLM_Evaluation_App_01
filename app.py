@@ -106,7 +106,7 @@ if uploaded_file:
                                     {"role": "system", "content": "You are a helpful assistant generating system prompts."},
                                     {"role": "user", "content": f"Generate a system prompt to evaluate relevance based on the following columns: {selected_column_names}"}
                                 ],
-                                max_tokens=200
+                                max_tokens=150
                             )
                             auto_generated_prompt = completion.choices[0].message.content.strip()
                             st.text_area(
