@@ -54,16 +54,16 @@ def generate_system_prompt(selected_columns: list) -> str:
     """
     Use OpenAI GPT-4 to generate a system prompt based on the selected columns.
     """
-    openai.api_key = "YOUR_OPENAI_API_KEY"  # Replace with your OpenAI API key
+    openai.api_key = st.secrets["OPENAI_API_KEY"]  # Replace with your OpenAI API key
     column_descriptions = ", ".join(selected_columns)
     prompt = (
         f"Create a system prompt to evaluate relevance based on the following columns: {column_descriptions}. "
         "The system prompt should guide the evaluation for content relevance and include detailed evaluation criteria."
     )
-    response = openai.Completion.create(
-        engine="text-davinci-004",
+    response = openai.chat.completions.create(
+        model="gpt-4o",
         prompt=prompt,
-        max_tokens=150
+        max_tokens=1024
     )
     return response.choices[0].text.strip()
 
