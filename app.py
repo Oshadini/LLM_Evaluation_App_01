@@ -102,7 +102,7 @@ if uploaded_file:
                     else:
                         try:
                             selected_column_names = ", ".join(selected_columns)
-                            completion = openai.ChatCompletion.create(
+                            completion = openai.chat.completions.create(
                                 model="gpt-4o",
                                 messages=[
                                     {"role": "system", "content": "You are a RELEVANCE grader; providing the relevance of the given question to the given answer.\nRespond only as a number from 0 to 10 where 0 is the least relevant and 10 is the most relevant. \n\nA few additional scoring guidelines:\n- Long answer should score equally well as short answer.\n- RELEVANCE score should increase as the answer provides more RELEVANT context to the  question.\n- RELEVANCE score should increase as the answer provides RELEVANT context to more parts of the  question.\n- answer that is RELEVANT to some of the question should score of 2, 3 or 4. Higher score indicates more RELEVANCE.\n- answer that is RELEVANT to most of the question should get a score of 5, 6, 7 or 8. Higher score indicates more RELEVANCE.\n- answer that is RELEVANT to the entire question should get a score of 9 or 10. Higher score indicates more RELEVANCE.\n- answer must be relevant and helpful for answering the entire question to get a score of 10.\n- Never elaborate."},
