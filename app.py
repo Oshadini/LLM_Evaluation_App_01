@@ -164,21 +164,6 @@ if uploaded_file:
 
                 st.markdown("</div>", unsafe_allow_html=True)
 
-            if st.button("Generate Results"):
-                if not metric_definitions:
-                    st.error("Please define at least one metric with a valid system prompt and selected columns.")
-                else:
-                    column_mapping = {
-                        "Question": "question",
-                        "Content": "formatted_content",
-                        "Answer": "formatted_history",
-                        "Reference Content": "formatted_reference_content",
-                        "Reference Answer": "formatted_reference_answer"
-                    }
-
-                    results = []
-                    for metric_index, metric in enumerate(metric_definitions, start
-
 
 
             if st.button("Generate Results"):
