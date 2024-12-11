@@ -94,6 +94,7 @@ if uploaded_file:
                     f"Automatically generate system prompt for Metric {i + 1}?", key=f"toggle_prompt_{i}"
                 )
 
+                # Handle system prompt generation or user input
                 system_prompt = ""
                 if toggle_prompt:
                     if len(selected_columns) < 1:
@@ -101,8 +102,8 @@ if uploaded_file:
                     else:
                         try:
                             selected_column_names = ", ".join(selected_columns)
-                            completion = openai.chat.completions.create(
-                                model="gpt-4o",  # Correct model name
+                            completion = openai.ChatCompletion.create(
+                                model="gpt-4",  # Correct model name
                                 messages=[
                                     {"role": "system", "content": "You are a helpful assistant generating system prompts."},
                                     {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}."}
@@ -113,6 +114,7 @@ if uploaded_file:
                             st.text_area(
                                 f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=200
                             )
+                            st.success(f"Generated System Prompt for Metric {i + 1} validated successfully.")
                         except Exception as e:
                             st.error(f"Error generating system prompt: {e}")
                 else:
@@ -124,27 +126,31 @@ if uploaded_file:
                 valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}", key=f"validate_{i}")
 
                 if valid_prompt:
-                    selected_column_terms = {
-                        col.lower().replace(" ", "_"): col
-                        for col in selected_columns
-                    }
-                    errors = []
-                    for term, original_column in selected_column_terms.items():
-                        term_pattern = f"\\b{term.replace('_', ' ')}\\b"
-                        if not re.search(term_pattern, system_prompt, re.IGNORECASE):
-                            errors.append(f"'{original_column}' needs to be included as '{term.replace('_', ' ')}' in the system prompt.")
-
-                    if errors:
-                        st.error(
-                            f"For Metric {i + 1}, the following errors were found in your system prompt: "
-                            f"{'; '.join(errors)}"
-                        )
+                    if toggle_prompt:
+                        st.success(f"Automatically generated system prompt for Metric {i + 1} is valid.")
                     else:
-                        st.success(f"System Prompt for Metric {i + 1} is valid.")
+                        selected_column_terms = {
+                            col.lower().replace(" ", "_"): col
+                            for col in selected_columns
+                        }
+                        errors = []
+                        for term, original_column in selected_column_terms.items():
+                            term_pattern = f"\\b{term.replace('_', ' ')}\\b"
+                            if not re.search(term_pattern, system_prompt, re.IGNORECASE):
+                                errors.append(f"'{original_column}' needs to be included as '{term.replace('_', ' ')}' in the system prompt.")
+
+                        if errors:
+                            st.error(
+                                f"For Metric {i + 1}, the following errors were found in your system prompt: "
+                                f"{'; '.join(errors)}"
+                            )
+                        else:
+                            st.success(f"Manually entered system prompt for Metric {i + 1} is valid.")
 
                 metric_definitions.append({
                     "system_prompt": system_prompt,
-                    "selected_columns": selected_columns
+                    "selected_columns": selected_columns,
+                    "is_auto_generated": toggle_prompt
                 })
 
                 st.markdown("</div>", unsafe_allow_html=True)
@@ -176,7 +182,7 @@ if uploaded_file:
 
                             result_row = {
                                 "Index": row["Index"],  # Maintain Index column
-                                "Metric": f"Metric {metric_index}",
+                                "Metric": f"Metric {metric_index} ({'Auto' if metric['is_auto_generated'] else 'Manual'})",
                                 "Selected Columns": ", ".join(selected_columns),
                                 "Score": score,
                                 "Criteria": details["criteria"],
