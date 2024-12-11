@@ -105,7 +105,7 @@ if uploaded_file:
                                 model="gpt-4o",  # Correct model name
                                 messages=[
                                     {"role": "system", "content": "You are a helpful assistant generating system prompts."},
-                                    {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}. Follow the given sample system prompt - You are a RELEVANCE grader; providing the relevance of the given question to the given answer.
+                                    {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names} and follow the given sample system prompt - You are a RELEVANCE grader; providing the relevance of the given question to the given answer.
             Respond only as a number from 0 to 10 where 0 is the least relevant and 10 is the most relevant. 
 
             A few additional scoring guidelines:
