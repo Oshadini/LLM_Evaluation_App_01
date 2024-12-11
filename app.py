@@ -96,14 +96,14 @@ if uploaded_file:
                     if len(selected_columns) > 0:
                         # Call OpenAI API to generate a prompt based on selected columns
                         try:
-                            prompt_response = openai.ChatCompletion.create(
+                            prompt_response = openai.chat.completions.create(
                                 model="gpt-4o",
                                 messages=[
                                     {"role": "system", "content": "Generate a system prompt for relevance checking."},
                                     {"role": "user", "content": f"Generate a prompt to check relevance for the following columns: {', '.join(selected_columns)}."}
                                 ]
                             )
-                            generated_prompt = prompt_response['choices'][0]['message']['content']
+                            generated_prompt = prompt_response.choices[0].message.content
                             st.text_area(
                                 f"Generated System Prompt for Metric {i + 1}:",
                                 value=generated_prompt,
