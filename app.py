@@ -94,32 +94,33 @@ if uploaded_file:
                     f"Automatically generate system prompt for Metric {i + 1}?", key=f"toggle_prompt_{i}"
                 )
 
-                system_prompt = ""
-                if toggle_prompt:
+                # Store system prompts in session state to ensure they don't change
+                prompt_key = f"system_prompt_{i}"
+                if toggle_prompt and prompt_key not in st.session_state:
                     if len(selected_columns) < 1:
                         st.error(f"For Metric {i + 1}, please select at least one column.")
                     else:
                         try:
                             selected_column_names = ", ".join(selected_columns)
-                            completion = openai.chat.completions.create(
-                                model="gpt-4o",  # Correct model name
+                            completion = openai.ChatCompletion.create(
+                                model="gpt-4",  # Correct model name
                                 messages=[
                                     {"role": "system", "content": "You are a helpful assistant generating system prompts."},
                                     {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}."}
                                 ],
                                 max_tokens=200
                             )
-                            system_prompt = completion.choices[0].message.content.strip()
-                            st.text_area(
-                                f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=200
-                            )
+                            st.session_state[prompt_key] = completion.choices[0].message.content.strip()
                         except Exception as e:
                             st.error(f"Error generating system prompt: {e}")
-                else:
-                    system_prompt = st.text_area(
-                        f"Enter the System Prompt for Metric {i + 1}:",
-                        height=200
-                    )
+                elif prompt_key not in st.session_state:
+                    st.session_state[prompt_key] = ""
+
+                system_prompt = st.text_area(
+                    f"System Prompt for Metric {i + 1}:",
+                    value=st.session_state[prompt_key],
+                    height=200
+                )
 
                 valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}", key=f"validate_{i}")
 
@@ -143,7 +144,7 @@ if uploaded_file:
                         st.success(f"System Prompt for Metric {i + 1} is valid.")
 
                 metric_definitions.append({
-                    "system_prompt": system_prompt,
+                    "system_prompt": st.session_state[prompt_key],
                     "selected_columns": selected_columns
                 })
 
