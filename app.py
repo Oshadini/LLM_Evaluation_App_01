@@ -91,30 +91,13 @@ if uploaded_file:
                 )
 
                 toggle_prompt = st.checkbox(
-                    f"Automatically generate system prompt for Metric {i + 1}?", key=f"toggle_prompt_{i}"
+                    f"Enable system prompt input for Metric {i + 1}?", key=f"toggle_prompt_{i}"
                 )
 
-                # Store system prompts in session state to ensure they don't change
+                # Store system prompts in session state to ensure they remain user-controlled
                 prompt_key = f"system_prompt_{i}"
                 if toggle_prompt and prompt_key not in st.session_state:
-                    if len(selected_columns) < 1:
-                        st.error(f"For Metric {i + 1}, please select at least one column.")
-                    else:
-                        try:
-                            selected_column_names = ", ".join(selected_columns)
-                            completion = openai.chat.completions.create(
-                                model="gpt-4o",  # Correct model name
-                                messages=[
-                                    {"role": "system", "content": "You are a helpful assistant generating system prompts."},
-                                    {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}."}
-                                ],
-                                max_tokens=200
-                            )
-                            st.session_state[prompt_key] = completion.choices[0].message.content.strip()
-                        except Exception as e:
-                            st.error(f"Error generating system prompt: {e}")
-                elif prompt_key not in st.session_state:
-                    st.session_state[prompt_key] = ""
+                    st.session_state[prompt_key] = ""  # Initialize empty system prompt
 
                 system_prompt = st.text_area(
                     f"System Prompt for Metric {i + 1}:",
