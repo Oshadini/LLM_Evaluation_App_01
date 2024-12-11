@@ -104,9 +104,9 @@ if uploaded_file:
                                 model="gpt-4o",
                                 messages=[
                                     {"role": "system", "content": "You are a helpful assistant generating system prompts."},
-                                    {"role": "user", "content": f"Generate a system prompt to evaluate relevance based on the following columns: {selected_column_names}"}
+                                    {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns.: {selected_column_names}"}
                                 ],
-                                max_tokens=150
+                                max_tokens=200
                             )
                             auto_generated_prompt = completion.choices[0].message.content.strip()
                             st.text_area(
