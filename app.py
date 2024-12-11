@@ -1,4 +1,4 @@
-# Updated Code with Different Background Colors for Each Metric
+# Updated Code with Toggle Button for Auto-Generated System Prompt
 import streamlit as st
 import pandas as pd
 from typing import Tuple, Dict
@@ -70,7 +70,7 @@ if uploaded_file:
             metric_definitions = []
             # Define background colors for metrics
             colors = ["#FFCCCC", "#CCE5FF", "#D5F5E3", "#F9E79F", "#FAD7A0"]  # Add more colors as needed
-            
+
             for i in range(num_metrics):
                 # Use a container with a distinct background color for each metric
                 bg_color = colors[i % len(colors)]  # Rotate colors if more metrics than colors
@@ -88,10 +88,24 @@ if uploaded_file:
                     key=f"columns_{i}"
                 )
 
-                system_prompt = st.text_area(
-                    f"Enter the System Prompt for Metric {i + 1}:",
-                    height=200  # Double the default height
+                toggle_auto_generate = st.checkbox(
+                    f"Generate System Prompt Automatically for Metric {i + 1}", key=f"toggle_{i}"
                 )
+
+                if toggle_auto_generate:
+                    if selected_columns:
+                        auto_prompt = """Generate a system prompt that evaluates relevance based on the following columns:"""
+                        auto_prompt += f" {', '.join(selected_columns)}."
+                        st.text_area(f"Generated System Prompt for Metric {i + 1}:", value=auto_prompt, height=200, disabled=True)
+                        system_prompt = auto_prompt
+                    else:
+                        st.error(f"For Metric {i + 1}, please select at least one column to generate a system prompt.")
+                else:
+                    system_prompt = st.text_area(
+                        f"Enter the System Prompt for Metric {i + 1}:",
+                        height=200  # Double the default height
+                    )
+
                 valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}", key=f"validate_{i}")
 
                 if len(selected_columns) < 1:
