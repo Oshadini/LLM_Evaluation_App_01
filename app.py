@@ -1,14 +1,19 @@
-# Corrected Code to Fix "Reference Content" Validation Error
+# Updated Code with Correct OpenAI GPT-4 API Integration
 import streamlit as st
 import pandas as pd
+import re
 from typing import Tuple, Dict
 from trulens.core import Feedback
 from trulens.providers.openai import OpenAI as fOpenAI
 from trulens.core import TruSession
 from trulens.feedback import prompts
+import openai
 
 # Initialize the session
 session = TruSession()
+
+# Set OpenAI API key
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Define the custom class
 class prompt_with_conversation_relevence(fOpenAI):
@@ -50,7 +55,7 @@ prompt_with_conversation_relevence_custom = prompt_with_conversation_relevence()
 
 # Streamlit UI
 st.title("LLM Evaluation Tool")
-st.write("Upload an Excel file with columns: Question, Content, Answer, Reference Content, Reference Answer to evaluate relevance scores.")
+st.write("Upload an Excel file with columns: Index, Question, Content, Answer, Reference Content, Reference Answer to evaluate relevance scores.")
 
 uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
 
@@ -58,7 +63,7 @@ if uploaded_file:
     try:
         df = pd.read_excel(uploaded_file)
 
-        required_columns = ["Question", "Content", "Answer", "Reference Content", "Reference Answer"]
+        required_columns = ["Index", "Question", "Content", "Answer", "Reference Content", "Reference Answer"]
         if not all(col in df.columns for col in required_columns):
             st.error(f"The uploaded file must contain these columns: {', '.join(required_columns)}.")
         else:
@@ -68,30 +73,69 @@ if uploaded_file:
             num_metrics = st.number_input("Enter the number of metrics you want to define:", min_value=1, step=1)
 
             metric_definitions = []
+            colors = ["#FFCCCC", "#CCE5FF", "#D5F5E3", "#F9E79F", "#FAD7A0"]  # Background colors for metrics
+            
             for i in range(num_metrics):
-                st.subheader(f"Metric {i + 1}")
+                bg_color = colors[i % len(colors)]
+                st.markdown(
+                    f"""
+                    <div style="background-color: {bg_color}; padding: 15px; margin-bottom: 15px; border-radius: 5px;">
+                    <h4 style="margin-top: 0;">Metric {i + 1}</h4>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
                 selected_columns = st.multiselect(
                     f"Select columns for Metric {i + 1}:",
-                    options=required_columns,
+                    options=required_columns[1:],
                     key=f"columns_{i}"
                 )
 
-                system_prompt = st.text_area(f"Enter the System Prompt for Metric {i + 1}:")
-                valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}")
+                toggle_prompt = st.checkbox(
+                    f"Automatically generate system prompt for Metric {i + 1}?", key=f"toggle_prompt_{i}"
+                )
+
+                if toggle_prompt:
+                    if len(selected_columns) < 1:
+                        st.error(f"For Metric {i + 1}, please select at least one column.")
+                    else:
+                        try:
+                            selected_column_names = ", ".join(selected_columns)
+                            completion = openai.ChatCompletion.create(
+                                model="gpt-4",  # Correct model name
+                                messages=[
+                                    {"role": "system", "content": "You are a helpful assistant generating system prompts."},
+                                    {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}"}
+                                ],
+                                max_tokens=200
+                            )
+                            auto_generated_prompt = completion.choices[0].message.content.strip()
+                            st.text_area(
+                                f"Generated System Prompt for Metric {i + 1}:", value=auto_generated_prompt, height=200
+                            )
+                        except Exception as e:
+                            st.error(f"Error generating system prompt: {e}")
+                else:
+                    system_prompt = st.text_area(
+                        f"Enter the System Prompt for Metric {i + 1}:",
+                        height=200
+                    )
+
+                valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}", key=f"validate_{i}")
 
                 if len(selected_columns) < 1:
                     st.error(f"For Metric {i + 1}, you must select at least one column.")
                     continue
 
-                if valid_prompt:
+                if valid_prompt and not toggle_prompt:
                     selected_column_terms = {
                         col.lower().replace(" ", "_"): col
                         for col in selected_columns
                     }
                     errors = []
                     for term, original_column in selected_column_terms.items():
-                        if term not in system_prompt.lower():
+                        term_pattern = f"\\b{term.replace('_', ' ')}\\b"
+                        if not re.search(term_pattern, system_prompt, re.IGNORECASE):
                             errors.append(f"'{original_column}' needs to be included as '{term.replace('_', ' ')}' in the system prompt.")
 
                     if errors:
@@ -104,9 +148,11 @@ if uploaded_file:
                         st.success(f"System Prompt for Metric {i + 1} is valid.")
 
                 metric_definitions.append({
-                    "system_prompt": system_prompt,
+                    "system_prompt": auto_generated_prompt if toggle_prompt else system_prompt,
                     "selected_columns": selected_columns
                 })
+
+                st.markdown("</div>", unsafe_allow_html=True)
 
             if st.button("Generate Results"):
                 if not metric_definitions:
@@ -133,13 +179,20 @@ if uploaded_file:
 
                             score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
 
-                            results.append({
+                            result_row = {
+                                "Index": row["Index"],  # Maintain Index column
                                 "Metric": f"Metric {metric_index}",
                                 "Selected Columns": ", ".join(selected_columns),
                                 "Score": score,
                                 "Criteria": details["criteria"],
                                 "Supporting Evidence": details["supporting_evidence"]
-                            })
+                            }
+
+                            for col in required_columns:
+                                if col != "Index":
+                                    result_row[col] = row[col]
+
+                            results.append(result_row)
 
                     results_df = pd.DataFrame(results)
                     st.write("Results:")
