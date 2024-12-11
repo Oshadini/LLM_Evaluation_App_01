@@ -1,4 +1,4 @@
-# Updated Code with Auto System Prompt Toggle
+# Updated Code with Different Background Colors for Each Metric
 import streamlit as st
 import pandas as pd
 from typing import Tuple, Dict
@@ -6,13 +6,9 @@ from trulens.core import Feedback
 from trulens.providers.openai import OpenAI as fOpenAI
 from trulens.core import TruSession
 from trulens.feedback import prompts
-import openai  # Added OpenAI library
 
 # Initialize the session
 session = TruSession()
-
-# Set your OpenAI API key
-openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Define the custom class
 class prompt_with_conversation_relevence(fOpenAI):
@@ -72,9 +68,11 @@ if uploaded_file:
             num_metrics = st.number_input("Enter the number of metrics you want to define:", min_value=1, step=1)
 
             metric_definitions = []
-            colors = ["#FFCCCC", "#CCE5FF", "#D5F5E3", "#F9E79F", "#FAD7A0"]  # Background colors for metrics
+            # Define background colors for metrics
+            colors = ["#FFCCCC", "#CCE5FF", "#D5F5E3", "#F9E79F", "#FAD7A0"]  # Add more colors as needed
             
             for i in range(num_metrics):
+                # Use a container with a distinct background color for each metric
                 bg_color = colors[i % len(colors)]  # Rotate colors if more metrics than colors
                 st.markdown(
                     f"""
@@ -90,39 +88,37 @@ if uploaded_file:
                     key=f"columns_{i}"
                 )
 
-                auto_prompt = st.checkbox(f"Generate System Prompt Automatically for Metric {i + 1}", key=f"auto_prompt_{i}")
+                system_prompt = st.text_area(
+                    f"Enter the System Prompt for Metric {i + 1}:",
+                    height=200  # Double the default height
+                )
+                valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}", key=f"validate_{i}")
 
-                if auto_prompt:
-                    if len(selected_columns) > 0:
-                        # Call OpenAI API to generate a prompt based on selected columns
-                        try:
-                            prompt_response = openai.chat.completions.create(
-                                model="gpt-4o",
-                                messages=[
-                                    {"role": "system", "content": "Generate a system prompt for relevance checking."},
-                                    {"role": "user", "content": f"Generate a prompt to check relevance for the following columns: {', '.join(selected_columns)}."}
-                                ]
-                            )
-                            generated_prompt = prompt_response.choices[0].message.content
-                            st.text_area(
-                                f"Generated System Prompt for Metric {i + 1}:",
-                                value=generated_prompt,
-                                height=200,
-                                key=f"generated_prompt_{i}"
-                            )
-                        except Exception as e:
-                            st.error(f"Error generating system prompt: {e}")
+                if len(selected_columns) < 1:
+                    st.error(f"For Metric {i + 1}, you must select at least one column.")
+                    continue
+
+                if valid_prompt:
+                    selected_column_terms = {
+                        col.lower().replace(" ", "_"): col
+                        for col in selected_columns
+                    }
+                    errors = []
+                    for term, original_column in selected_column_terms.items():
+                        if term not in system_prompt.lower():
+                            errors.append(f"'{original_column}' needs to be included as '{term.replace('_', ' ')}' in the system prompt.")
+
+                    if errors:
+                        st.error(
+                            f"For Metric {i + 1}, the following errors were found in your system prompt: "
+                            f"{'; '.join(errors)}"
+                        )
+                        continue
                     else:
-                        st.warning(f"Please select columns to generate a system prompt for Metric {i + 1}.")
-                else:
-                    system_prompt = st.text_area(
-                        f"Enter the System Prompt for Metric {i + 1}:",
-                        height=200,  # Double the default height
-                        key=f"system_prompt_{i}"
-                    )
+                        st.success(f"System Prompt for Metric {i + 1} is valid.")
 
                 metric_definitions.append({
-                    "system_prompt": system_prompt if not auto_prompt else generated_prompt,
+                    "system_prompt": system_prompt,
                     "selected_columns": selected_columns
                 })
 
@@ -162,6 +158,7 @@ if uploaded_file:
                                 "Supporting Evidence": details["supporting_evidence"]
                             }
 
+                            # Include original input columns
                             for col in required_columns:
                                 if col != "Index":
                                     result_row[col] = row[col]
@@ -178,5 +175,5 @@ if uploaded_file:
                         file_name="relevance_results.csv",
                         mime="text/csv",
                     )
-    except Exception as e:
+      except Exception as e:
         st.error(f"An error occurred: {e}")
