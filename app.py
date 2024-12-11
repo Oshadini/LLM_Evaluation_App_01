@@ -1,4 +1,4 @@
-# Updated Code with Different Background Colors for Each Metric
+# Updated Code with Toggle Button for Automatic System Prompt Generation
 import streamlit as st
 import pandas as pd
 from typing import Tuple, Dict
@@ -6,6 +6,7 @@ from trulens.core import Feedback
 from trulens.providers.openai import OpenAI as fOpenAI
 from trulens.core import TruSession
 from trulens.feedback import prompts
+import openai  # Added to support OpenAI API calls
 
 # Initialize the session
 session = TruSession()
@@ -48,6 +49,24 @@ class prompt_with_conversation_relevence(fOpenAI):
 # Initialize the custom class
 prompt_with_conversation_relevence_custom = prompt_with_conversation_relevence()
 
+# Function to generate system prompt using GPT-4
+def generate_system_prompt(selected_columns: list) -> str:
+    """
+    Use OpenAI GPT-4 to generate a system prompt based on the selected columns.
+    """
+    openai.api_key = "YOUR_OPENAI_API_KEY"  # Replace with your OpenAI API key
+    column_descriptions = ", ".join(selected_columns)
+    prompt = (
+        f"Create a system prompt to evaluate relevance based on the following columns: {column_descriptions}. "
+        "The system prompt should guide the evaluation for content relevance and include detailed evaluation criteria."
+    )
+    response = openai.Completion.create(
+        engine="text-davinci-004",
+        prompt=prompt,
+        max_tokens=150
+    )
+    return response.choices[0].text.strip()
+
 # Streamlit UI
 st.title("LLM Evaluation Tool")
 st.write("Upload an Excel file with columns: Index, Question, Content, Answer, Reference Content, Reference Answer to evaluate relevance scores.")
@@ -88,10 +107,31 @@ if uploaded_file:
                     key=f"columns_{i}"
                 )
 
-                system_prompt = st.text_area(
-                    f"Enter the System Prompt for Metric {i + 1}:",
-                    height=200  # Double the default height
+                auto_generate = st.checkbox(
+                    f"Automatically Generate System Prompt for Metric {i + 1}",
+                    key=f"auto_generate_{i}"
                 )
+
+                if auto_generate:
+                    if selected_columns:
+                        system_prompt = generate_system_prompt(selected_columns)
+                        st.text_area(
+                            f"Generated System Prompt for Metric {i + 1}:",
+                            value=system_prompt,
+                            height=200,
+                            key=f"auto_prompt_{i}",
+                            disabled=True
+                        )
+                    else:
+                        st.warning(f"Please select columns for Metric {i + 1} to generate a system prompt.")
+                        continue
+                else:
+                    system_prompt = st.text_area(
+                        f"Enter the System Prompt for Metric {i + 1}:",
+                        height=200,  # Double the default height
+                        key=f"manual_prompt_{i}"
+                    )
+
                 valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}", key=f"validate_{i}")
 
                 if len(selected_columns) < 1:
