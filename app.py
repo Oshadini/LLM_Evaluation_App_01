@@ -101,10 +101,10 @@ if uploaded_file:
                         try:
                             selected_column_names = ", ".join(selected_columns)
                             completion = openai.chat.completions.create(
-                                model="gpt-4o",
+                                model="gpt-4o",  # Correct model name
                                 messages=[
                                     {"role": "system", "content": "You are a helpful assistant generating system prompts."},
-                                    {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns.: {selected_column_names}"}
+                                    {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}"}
                                 ],
                                 max_tokens=200
                             )
@@ -133,7 +133,8 @@ if uploaded_file:
                     }
                     errors = []
                     for term, original_column in selected_column_terms.items():
-                        if term not in system_prompt.lower():
+                        term_pattern = f"\\b{term.replace('_', ' ')}\\b"
+                        if not re.search(term_pattern, system_prompt, re.IGNORECASE):
                             errors.append(f"'{original_column}' needs to be included as '{term.replace('_', ' ')}' in the system prompt.")
 
                     if errors:
@@ -201,6 +202,7 @@ if uploaded_file:
                         data=results_df.to_csv(index=False),
                         file_name="relevance_results.csv",
                         mime="text/csv",
+                    )
                     )
     except Exception as e:
         st.error(f"An error occurred: {e}")
