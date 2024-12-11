@@ -1,4 +1,4 @@
-# Updated Code with Automatic System Prompt Toggle
+# Updated Code with Correct OpenAI GPT-4 API Integration
 import streamlit as st
 import pandas as pd
 from typing import Tuple, Dict
@@ -102,10 +102,13 @@ if uploaded_file:
                             selected_column_names = ", ".join(selected_columns)
                             completion = openai.chat.completions.create(
                                 model="gpt-4o",
-                                prompt=f"Generate a system prompt to evaluate relevance based on the following columns: {selected_column_names}",
+                                messages=[
+                                    {"role": "system", "content": "You are a helpful assistant generating system prompts."},
+                                    {"role": "user", "content": f"Generate a system prompt to evaluate relevance based on the following columns: {selected_column_names}"}
+                                ],
                                 max_tokens=200
                             )
-                            auto_generated_prompt = completion.choices[0].text.strip()
+                            auto_generated_prompt = completion.choices[0].message.content.strip()
                             st.text_area(
                                 f"Generated System Prompt for Metric {i + 1}:", value=auto_generated_prompt, height=200
                             )
