@@ -1,4 +1,4 @@
-# Corrected Code to Fix "Reference Content" Validation Error
+# Corrected Code with Updated Validation and Order
 import streamlit as st
 import pandas as pd
 from typing import Tuple, Dict
@@ -78,6 +78,20 @@ if uploaded_file:
             metric_definitions = []
             for i in range(num_metrics):
                 st.subheader(f"Metric {i + 1}")
+                
+                # Selection comes before prompt input
+                selected_columns = st.multiselect(
+                    f"Select columns for Metric {i + 1}:",
+                    options=required_columns,
+                    key=f"columns_{i}"
+                )
+
+                # Ensure at least two columns are selected
+                if len(selected_columns) < 2:
+                    st.error(f"For Metric {i + 1}, you must select at least two columns.")
+                    continue
+                
+                # Prompt input comes after selection
                 system_prompt = st.text_area(f"Enter the System Prompt for Metric {i + 1}:")
                 valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}")
 
@@ -95,44 +109,34 @@ if uploaded_file:
 
                 if valid_prompt:
                     # Validate the system prompt
-                    if not system_prompt.strip() or len(matched_terms) < 2:
+                    if not system_prompt.strip():
+                        st.error(f"For Metric {i + 1}, the system prompt cannot be empty.")
+                        continue
+                    
+                    # Validate column selection alignment with system prompt
+                    column_mapping = {
+                        "question": "Question",
+                        "answer": "Answer",
+                        "content": "Content",
+                        "reference content": "Reference Content",
+                        "reference answer": "Reference Answer"
+                    }
+
+                    missing_terms = []
+                    for term in matched_terms:
+                        if column_mapping[term] not in selected_columns:
+                            missing_terms.append(term)
+                    
+                    if missing_terms:
+                        missing_columns = [column_mapping[term] for term in missing_terms]
                         st.error(
-                            f"For Metric {i + 1}, the system prompt must include valid criteria involving at least two of the following: {', '.join(valid_terms)}."
+                            f"For Metric {i + 1}, the system prompt references '{', '.join(missing_terms)}', "
+                            f"but you need to select these columns: {', '.join(missing_columns)}."
                         )
                         continue
                     else:
                         st.success(f"System Prompt for Metric {i + 1} is valid.")
 
-                selected_columns = st.multiselect(
-                    f"Select columns for Metric {i + 1}:",
-                    options=required_columns,
-                    key=f"columns_{i}"
-                )
-
-                # Ensure at least two columns are selected
-                if len(selected_columns) < 2:
-                    st.error(f"For Metric {i + 1}, you must select at least two columns.")
-                    continue
-
-                # Validate column selection alignment with system prompt
-                column_mapping = {
-                    "question": "Question",
-                    "answer": "Answer",
-                    "content": "Content",
-                    "reference content": "Reference Content",
-                    "reference answer": "Reference Answer"
-                }
-                prompt_criteria = {
-                    term: column_mapping[term] in selected_columns
-                    for term in matched_terms
-                }
-                for term in matched_terms:
-                    if not prompt_criteria.get(term):
-                        st.error(
-                            f"For Metric {i + 1}, the selected columns must align with the system prompt's criteria (e.g., include '{term}')."
-                        )
-                        break
-                else:
                     metric_definitions.append({
                         "system_prompt": system_prompt,
                         "selected_columns": selected_columns
