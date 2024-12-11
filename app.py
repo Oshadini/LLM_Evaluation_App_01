@@ -1,4 +1,4 @@
-# Updated Code with Toggle Button for Automatic System Prompt Generation
+# Updated Code with Automatic System Prompt Toggle
 import streamlit as st
 import pandas as pd
 from typing import Tuple, Dict
@@ -6,7 +6,7 @@ from trulens.core import Feedback
 from trulens.providers.openai import OpenAI as fOpenAI
 from trulens.core import TruSession
 from trulens.feedback import prompts
-import openai  # Added to support OpenAI API calls
+import openai
 
 # Initialize the session
 session = TruSession()
@@ -49,24 +49,6 @@ class prompt_with_conversation_relevence(fOpenAI):
 # Initialize the custom class
 prompt_with_conversation_relevence_custom = prompt_with_conversation_relevence()
 
-# Function to generate system prompt using GPT-4
-def generate_system_prompt(selected_columns: list) -> str:
-    """
-    Use OpenAI GPT-4 to generate a system prompt based on the selected columns.
-    """
-    openai.api_key = st.secrets["OPENAI_API_KEY"]  # Replace with your OpenAI API key
-    column_descriptions = ", ".join(selected_columns)
-    prompt = (
-        f"Create a system prompt to evaluate relevance based on the following columns: {column_descriptions}. "
-        "The system prompt should guide the evaluation for content relevance and include detailed evaluation criteria."
-    )
-    response = openai.chat.completions.create(
-        model="gpt-4o",
-        prompt=prompt,
-        max_tokens=1024
-    )
-    return response.choices[0].message.content.strip()
-
 # Streamlit UI
 st.title("LLM Evaluation Tool")
 st.write("Upload an Excel file with columns: Index, Question, Content, Answer, Reference Content, Reference Answer to evaluate relevance scores.")
@@ -87,12 +69,10 @@ if uploaded_file:
             num_metrics = st.number_input("Enter the number of metrics you want to define:", min_value=1, step=1)
 
             metric_definitions = []
-            # Define background colors for metrics
-            colors = ["#FFCCCC", "#CCE5FF", "#D5F5E3", "#F9E79F", "#FAD7A0"]  # Add more colors as needed
+            colors = ["#FFCCCC", "#CCE5FF", "#D5F5E3", "#F9E79F", "#FAD7A0"]  # Background colors for metrics
             
             for i in range(num_metrics):
-                # Use a container with a distinct background color for each metric
-                bg_color = colors[i % len(colors)]  # Rotate colors if more metrics than colors
+                bg_color = colors[i % len(colors)]
                 st.markdown(
                     f"""
                     <div style="background-color: {bg_color}; padding: 15px; margin-bottom: 15px; border-radius: 5px;">
@@ -103,33 +83,35 @@ if uploaded_file:
 
                 selected_columns = st.multiselect(
                     f"Select columns for Metric {i + 1}:",
-                    options=required_columns[1:],  # Exclude "Index"
+                    options=required_columns[1:],
                     key=f"columns_{i}"
                 )
 
-                auto_generate = st.checkbox(
-                    f"Automatically Generate System Prompt for Metric {i + 1}",
-                    key=f"auto_generate_{i}"
+                toggle_prompt = st.checkbox(
+                    f"Automatically generate system prompt for Metric {i + 1}?", key=f"toggle_prompt_{i}"
                 )
 
-                if auto_generate:
-                    if selected_columns:
-                        system_prompt = generate_system_prompt(selected_columns)
-                        st.text_area(
-                            f"Generated System Prompt for Metric {i + 1}:",
-                            value=system_prompt,
-                            height=200,
-                            key=f"auto_prompt_{i}",
-                            disabled=True
-                        )
+                if toggle_prompt:
+                    if len(selected_columns) < 1:
+                        st.error(f"For Metric {i + 1}, please select at least one column.")
                     else:
-                        st.warning(f"Please select columns for Metric {i + 1} to generate a system prompt.")
-                        continue
+                        try:
+                            selected_column_names = ", ".join(selected_columns)
+                            completion = openai.chat.completions.create(
+                                model="gpt-4o",
+                                prompt=f"Generate a system prompt to evaluate relevance based on the following columns: {selected_column_names}",
+                                max_tokens=200
+                            )
+                            auto_generated_prompt = completion.choices[0].text.strip() 
+                            st.text_area(
+                                f"Generated System Prompt for Metric {i + 1}:", value=auto_generated_prompt, height=200
+                            )
+                        except Exception as e:
+                            st.error(f"Error generating system prompt: {e}")
                 else:
                     system_prompt = st.text_area(
                         f"Enter the System Prompt for Metric {i + 1}:",
-                        height=200,  # Double the default height
-                        key=f"manual_prompt_{i}"
+                        height=200
                     )
 
                 valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}", key=f"validate_{i}")
@@ -138,7 +120,7 @@ if uploaded_file:
                     st.error(f"For Metric {i + 1}, you must select at least one column.")
                     continue
 
-                if valid_prompt:
+                if valid_prompt and not toggle_prompt:
                     selected_column_terms = {
                         col.lower().replace(" ", "_"): col
                         for col in selected_columns
@@ -158,7 +140,7 @@ if uploaded_file:
                         st.success(f"System Prompt for Metric {i + 1} is valid.")
 
                 metric_definitions.append({
-                    "system_prompt": system_prompt,
+                    "system_prompt": auto_generated_prompt if toggle_prompt else system_prompt,
                     "selected_columns": selected_columns
                 })
 
@@ -198,7 +180,6 @@ if uploaded_file:
                                 "Supporting Evidence": details["supporting_evidence"]
                             }
 
-                            # Include original input columns
                             for col in required_columns:
                                 if col != "Index":
                                     result_row[col] = row[col]
