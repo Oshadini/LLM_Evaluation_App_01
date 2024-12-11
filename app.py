@@ -1,4 +1,4 @@
-# Corrected Code to Fix "Reference Content" Validation Error
+# Updated Code with Different Background Colors for Each Metric
 import streamlit as st
 import pandas as pd
 from typing import Tuple, Dict
@@ -50,7 +50,7 @@ prompt_with_conversation_relevence_custom = prompt_with_conversation_relevence()
 
 # Streamlit UI
 st.title("LLM Evaluation Tool")
-st.write("Upload an Excel file with columns: Question, Content, Answer, Reference Content, Reference Answer to evaluate relevance scores.")
+st.write("Upload an Excel file with columns: Index, Question, Content, Answer, Reference Content, Reference Answer to evaluate relevance scores.")
 
 uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
 
@@ -58,7 +58,7 @@ if uploaded_file:
     try:
         df = pd.read_excel(uploaded_file)
 
-        required_columns = ["Question", "Content", "Answer", "Reference Content", "Reference Answer"]
+        required_columns = ["Index", "Question", "Content", "Answer", "Reference Content", "Reference Answer"]
         if not all(col in df.columns for col in required_columns):
             st.error(f"The uploaded file must contain these columns: {', '.join(required_columns)}.")
         else:
@@ -68,17 +68,31 @@ if uploaded_file:
             num_metrics = st.number_input("Enter the number of metrics you want to define:", min_value=1, step=1)
 
             metric_definitions = []
+            # Define background colors for metrics
+            colors = ["#FFCCCC", "#CCE5FF", "#D5F5E3", "#F9E79F", "#FAD7A0"]  # Add more colors as needed
+            
             for i in range(num_metrics):
-                st.subheader(f"Metric {i + 1}")
+                # Use a container with a distinct background color for each metric
+                bg_color = colors[i % len(colors)]  # Rotate colors if more metrics than colors
+                st.markdown(
+                    f"""
+                    <div style="background-color: {bg_color}; padding: 15px; margin-bottom: 15px; border-radius: 5px;">
+                    <h4 style="margin-top: 0;">Metric {i + 1}</h4>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
                 selected_columns = st.multiselect(
                     f"Select columns for Metric {i + 1}:",
-                    options=required_columns,
+                    options=required_columns[1:],  # Exclude "Index"
                     key=f"columns_{i}"
                 )
 
-                system_prompt = st.text_area(f"Enter the System Prompt for Metric {i + 1}:")
-                valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}")
+                system_prompt = st.text_area(
+                    f"Enter the System Prompt for Metric {i + 1}:",
+                    height=200  # Double the default height
+                )
+                valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}", key=f"validate_{i}")
 
                 if len(selected_columns) < 1:
                     st.error(f"For Metric {i + 1}, you must select at least one column.")
@@ -108,6 +122,8 @@ if uploaded_file:
                     "selected_columns": selected_columns
                 })
 
+                st.markdown("</div>", unsafe_allow_html=True)
+
             if st.button("Generate Results"):
                 if not metric_definitions:
                     st.error("Please define at least one metric with a valid system prompt and selected columns.")
@@ -133,13 +149,21 @@ if uploaded_file:
 
                             score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
 
-                            results.append({
+                            result_row = {
+                                "Index": row["Index"],  # Maintain Index column
                                 "Metric": f"Metric {metric_index}",
                                 "Selected Columns": ", ".join(selected_columns),
                                 "Score": score,
                                 "Criteria": details["criteria"],
                                 "Supporting Evidence": details["supporting_evidence"]
-                            })
+                            }
+
+                            # Include original input columns
+                            for col in required_columns:
+                                if col != "Index":
+                                    result_row[col] = row[col]
+
+                            results.append(result_row)
 
                     results_df = pd.DataFrame(results)
                     st.write("Results:")
