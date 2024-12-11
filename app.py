@@ -11,6 +11,9 @@ import openai
 # Initialize the session
 session = TruSession()
 
+# Set OpenAI API key
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+
 # Define the custom class
 class prompt_with_conversation_relevence(fOpenAI):
     def prompt_with_conversation_relevence_feedback(self, **kwargs) -> Tuple[float, Dict]:
@@ -102,7 +105,7 @@ if uploaded_file:
                                 prompt=f"Generate a system prompt to evaluate relevance based on the following columns: {selected_column_names}",
                                 max_tokens=200
                             )
-                            auto_generated_prompt = completion.choices[0].text.strip() 
+                            auto_generated_prompt = completion.choices[0].text.strip()
                             st.text_area(
                                 f"Generated System Prompt for Metric {i + 1}:", value=auto_generated_prompt, height=200
                             )
