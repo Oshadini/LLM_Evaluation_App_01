@@ -105,7 +105,7 @@ if uploaded_file:
                                 model="gpt-4o",  # Correct model name
                                 messages=[
                                     {"role": "system", "content": "You are a helpful assistant generating system prompts."},
-                                    {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}. Follow the given sample prompt """ You are a RELEVANCE grader; providing the relevance of the given question to the given answer.
+                                    {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}. Follow the given sample system prompt - You are a RELEVANCE grader; providing the relevance of the given question to the given answer.
             Respond only as a number from 0 to 10 where 0 is the least relevant and 10 is the most relevant. 
 
             A few additional scoring guidelines:
@@ -116,7 +116,7 @@ if uploaded_file:
             - answer that is RELEVANT to most of the question should get a score of 5, 6, 7 or 8. Higher score indicates more RELEVANCE.
             - answer that is RELEVANT to the entire question should get a score of 9 or 10. Higher score indicates more RELEVANCE.
             - answer must be relevant and helpful for answering the entire question to get a score of 10.
-            - Never elaborate.""" "}
+            - Never elaborate."}
                                 ],
                                 max_tokens=200
                             )
