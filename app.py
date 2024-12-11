@@ -1,3 +1,4 @@
+# Updated Code with System Prompt Toggle
 import streamlit as st
 import pandas as pd
 from typing import Tuple, Dict
@@ -9,6 +10,9 @@ import openai
 
 # Initialize the session
 session = TruSession()
+
+# OpenAI API Key (Replace with your actual API key)
+openai.api_key = "your-openai-api-key"
 
 # Define the custom class
 class prompt_with_conversation_relevence(fOpenAI):
@@ -88,35 +92,24 @@ if uploaded_file:
                     key=f"columns_{i}"
                 )
 
-                use_generated_prompt = st.checkbox(f"Use Generated Prompt for Metric {i + 1}", key=f"generated_prompt_{i}")
+                auto_generate_prompt = st.checkbox(f"Automatically generate system prompt for Metric {i + 1}", key=f"auto_prompt_{i}")
 
-                if use_generated_prompt:
-                    if len(selected_columns) < 1:
-                        st.error(f"For Metric {i + 1}, you must select at least one column to generate a prompt.")
-                    else:
-                        # Generate prompt based on selected columns
-                        columns_string = ", ".join(selected_columns)
-                        try:
-                            system_prompt = openai.Completion.create(
-                                engine="gpt-4",
-                                prompt=f"Generate a system prompt to evaluate relevance based on these columns: {columns_string}",
+                if auto_generate_prompt:
+                    if len(selected_columns) > 0:
+                        with st.spinner("Generating system prompt..."):
+                            response = openai.Completion.create(
+                                engine="text-davinci-003",
+                                prompt=f"Generate a system prompt to evaluate relevance based on the following columns: {', '.join(selected_columns)}.",
                                 max_tokens=150
-                            )["choices"][0]["text"].strip()
-
-                            st.text_area(
-                                f"Generated System Prompt for Metric {i + 1}:",
-                                value=system_prompt,
-                                height=200,
-                                key=f"auto_system_prompt_{i}"
                             )
-
-                        except Exception as e:
-                            st.error(f"Error generating system prompt: {e}")
+                            system_prompt = response.choices[0].text.strip()
+                            st.text_area(f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=200, key=f"generated_prompt_{i}")
+                    else:
+                        st.warning(f"Please select columns for Metric {i + 1} to generate a system prompt.")
                 else:
                     system_prompt = st.text_area(
                         f"Enter the System Prompt for Metric {i + 1}:",
-                        height=200,  # Double the default height
-                        key=f"system_prompt_{i}"
+                        height=200  # Double the default height
                     )
 
                 valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}", key=f"validate_{i}")
