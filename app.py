@@ -171,8 +171,8 @@ if uploaded_file:
                     st.write(f"Results for Metric {i + 1}:")
                     st.dataframe(pd.DataFrame(results))
 
-            # Button for generating combined results
-            if st.button("Generate Combined Results"):
+            # Button for generating combined results - only show if more than one metric is selected
+            if num_metrics > 1 and st.button("Generate Combined Results"):
                 if st.session_state.combined_results:
                     st.write("Combined Results:")
                     st.dataframe(pd.DataFrame(st.session_state.combined_results))
