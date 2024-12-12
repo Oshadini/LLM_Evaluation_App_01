@@ -78,6 +78,8 @@ if uploaded_file:
                 st.session_state.combined_results = []
 
             for i in range(num_metrics):
+                # Insert a thick line above each Metric header
+                st.markdown("<hr style='border: 3px solid #000000;'>", unsafe_allow_html=True)
                 st.markdown(f"### Metric {i + 1}")
 
                 selected_columns = st.multiselect(
