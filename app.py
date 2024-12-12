@@ -10,16 +10,7 @@ import openai
 
 # Initialize the session
 session = TruSession()
-from sqlalchemy import Table, MetaData, Column, Integer, String
 
-metadata = MetaData()
-
-trulens_apps = Table(
-    'trulens_apps', metadata,
-    Column('id', Integer, primary_key=True),
-    Column('name', String),
-    extend_existing=True  # Prevents redefinition conflicts
-)
 
 # Set OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
