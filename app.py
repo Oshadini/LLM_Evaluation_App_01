@@ -93,7 +93,7 @@ if uploaded_file:
                 )
 
                 toggle_prompt = st.checkbox(
-                    f"Automatically generate system prompt for Metric {i + 1}?", key=f"toggle_prompt_{i}"
+                    f"Automatically generate system prompt for Metric {i + 1}", key=f"toggle_prompt_{i}"
                 )
 
                 if toggle_prompt:
