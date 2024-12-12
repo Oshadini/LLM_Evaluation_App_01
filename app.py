@@ -71,7 +71,10 @@ if uploaded_file:
 
             num_metrics = st.number_input("Enter the number of metrics you want to define:", min_value=1, step=1)
 
-            metric_definitions = []
+            # Initialize session state to store system prompts
+            if "system_prompts" not in st.session_state:
+                st.session_state.system_prompts = {}
+
             for i in range(num_metrics):
                 st.markdown(f"### Metric {i + 1}")
 
@@ -89,50 +92,27 @@ if uploaded_file:
                     if len(selected_columns) < 1:
                         st.error(f"For Metric {i + 1}, please select at least one column.")
                     else:
-                        try:
-                            selected_column_names = ", ".join(selected_columns)
-                            completion = openai.chat.completions.create(
-                                model="gpt-4o",  # Correct model name
-                                messages=[
-                                    {"role": "system", "content": "You are a helpful assistant generating system prompts."},
-                                    {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}."}
-                                ],
-                                max_tokens=200
-                            )
-                            system_prompt = completion.choices[0].message.content.strip()
-                            st.text_area(
-                                f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=200
-                            )
-                            # Validate prompt
-                            st.success(f"System Prompt for Metric {i + 1} is valid.")
-                            # Generate results immediately
-                            column_mapping = {
-                                "Question": "question",
-                                "Content": "formatted_content",
-                                "Answer": "formatted_history",
-                                "Reference Content": "formatted_reference_content",
-                                "Reference Answer": "formatted_reference_answer"
-                            }
-                            results = []
-                            for index, row in df.iterrows():
-                                params = {"system_prompt": system_prompt}
-                                for col in selected_columns:
-                                    if col in column_mapping:
-                                        params[column_mapping[col]] = row[col]
+                        if f"metric_{i}" not in st.session_state.system_prompts:
+                            try:
+                                selected_column_names = ", ".join(selected_columns)
+                                completion = openai.chat.completions.create(
+                                    model="gpt-4o",  # Correct model name
+                                    messages=[
+                                        {"role": "system", "content": "You are a helpful assistant generating system prompts."},
+                                        {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}."}
+                                    ],
+                                    max_tokens=200
+                                )
+                                system_prompt = completion.choices[0].message.content.strip()
+                                st.session_state.system_prompts[f"metric_{i}"] = system_prompt
+                            except Exception as e:
+                                st.error(f"Error generating or processing system prompt: {e}")
 
-                                score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
-                                result_row = {
-                                    "Index": row["Index"],
-                                    "Metric": f"Metric {i + 1}",
-                                    "Score": score,
-                                    "Criteria": details["criteria"],
-                                    "Supporting Evidence": details["supporting_evidence"]
-                                }
-                                results.append(result_row)
-                            st.write(f"Results for Metric {i + 1}:")
-                            st.dataframe(pd.DataFrame(results))
-                        except Exception as e:
-                            st.error(f"Error generating or processing system prompt: {e}")
+                        system_prompt = st.session_state.system_prompts.get(f"metric_{i}", "")
+                        st.text_area(
+                            f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=200
+                        )
+                        st.success(f"System Prompt for Metric {i + 1} is valid.")
                 else:
                     system_prompt = st.text_area(
                         f"Enter the System Prompt for Metric {i + 1}:",
