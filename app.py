@@ -75,6 +75,7 @@ if uploaded_file:
             if "system_prompts" not in st.session_state:
                 st.session_state.system_prompts = {}
 
+            combined_results = []
             for i in range(num_metrics):
                 st.markdown(f"### Metric {i + 1}")
 
@@ -164,7 +165,13 @@ if uploaded_file:
                                 "Supporting Evidence": details["supporting_evidence"]
                             }
                             results.append(result_row)
+                        combined_results.extend(results)
                         st.write(f"Results for Metric {i + 1}:")
                         st.dataframe(pd.DataFrame(results))
+
+            if combined_results:
+                if st.button("Generate Combined Results"):
+                    st.write("Combined Results:")
+                    st.dataframe(pd.DataFrame(combined_results))
     except Exception as e:
         st.error(f"An error occurred: {e}")
