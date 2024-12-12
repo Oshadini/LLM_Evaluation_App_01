@@ -93,7 +93,7 @@ if uploaded_file:
                 )
 
                 toggle_prompt = st.checkbox(
-                    f"Automatically generate system prompt for Metric {i + 1}", key=f"toggle_prompt_{i}"
+                    f"Automatically generate system prompt for Metric {i + 1}?", key=f"toggle_prompt_{i}"
                 )
 
                 if toggle_prompt:
@@ -166,11 +166,17 @@ if uploaded_file:
 
                         score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
                         result_row = {
-                            "Index": row["Index"],
                             "Metric": f"Metric {i + 1}",
+                            "Selected Columns": ", ".join(selected_columns),
                             "Score": score,
                             "Criteria": details["criteria"],
-                            "Supporting Evidence": details["supporting_evidence"]
+                            "Supporting Evidence": details["supporting_evidence"],
+                            "Index": row["Index"],
+                            "Question": row["Question"],
+                            "Context": row["Context"],
+                            "Answer": row["Answer"],
+                            "Reference Context": row["Reference Context"],
+                            "Reference Answer": row["Reference Answer"]
                         }
                         results.append(result_row)
                     st.session_state.combined_results.extend(results)
@@ -178,7 +184,7 @@ if uploaded_file:
                     st.dataframe(pd.DataFrame(results))
 
             # Button for generating combined results - only show if more than one metric is selected
-            if num_metrics > 1 and st.button("Generate Overall Results"):
+            if num_metrics > 1 and st.button("Generate Combined Results"):
                 if st.session_state.combined_results:
                     st.write("Combined Results:")
                     st.dataframe(pd.DataFrame(st.session_state.combined_results))
