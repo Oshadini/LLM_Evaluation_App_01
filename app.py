@@ -1,4 +1,4 @@
-# Updated Code to Add Border Around Each Metric Section
+# Updated Code
 import streamlit as st
 import pandas as pd
 from typing import Tuple, Dict
@@ -16,6 +16,7 @@ class prompt_with_conversation_relevence(fOpenAI):
         """
         Process the dynamically selected parameters to generate relevance feedback.
         """
+        # Dynamically construct the user prompt based on provided parameters and selected columns
         user_prompt = ""
         if "question" in kwargs:
             user_prompt += "question: {question}\n\n"
@@ -29,12 +30,15 @@ class prompt_with_conversation_relevence(fOpenAI):
             user_prompt += "content: {formatted_content}\n\n"
         user_prompt += "RELEVANCE: "
 
+        # Format the user prompt with the provided values
         user_prompt = user_prompt.format(**kwargs)
 
+        # Replace RELEVANCE with additional reasoning templates
         user_prompt = user_prompt.replace(
             "RELEVANCE:", prompts.COT_REASONS_TEMPLATE
         )
 
+        # Generate results
         result = self.generate_score_and_reasons(kwargs["system_prompt"], user_prompt)
 
         details = result[1]
@@ -49,81 +53,49 @@ class prompt_with_conversation_relevence(fOpenAI):
 prompt_with_conversation_relevence_custom = prompt_with_conversation_relevence()
 
 # Streamlit UI
-st.title("LLM Evaluation Tool")
-st.write("Upload an Excel file with columns: Index, Question, Content, Answer, Reference Content, Reference Answer to evaluate relevance scores.")
+st.title("Relevance Grader Tool")
+st.write("Upload an Excel file with columns: Question, Content, Answer, Reference Content, Reference Answer to evaluate relevance scores.")
 
+# Step 1: File uploader
 uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
 
 if uploaded_file:
     try:
+        # Load the Excel file
         df = pd.read_excel(uploaded_file)
 
-        required_columns = ["Index", "Question", "Content", "Answer", "Reference Content", "Reference Answer"]
+        # Validate required columns
+        required_columns = ["Question", "Content", "Answer", "Reference Content", "Reference Answer"]
         if not all(col in df.columns for col in required_columns):
             st.error(f"The uploaded file must contain these columns: {', '.join(required_columns)}.")
         else:
             st.write("Preview of Uploaded Data:")
             st.dataframe(df.head())
 
+            # Step 2: Select number of metrics
             num_metrics = st.number_input("Enter the number of metrics you want to define:", min_value=1, step=1)
 
             metric_definitions = []
             for i in range(num_metrics):
-                # Start a bordered section for each metric
-                st.markdown(
-                    f"""
-                    <div style="border: 2px solid black; padding: 15px; margin-bottom: 15px; border-radius: 5px;">
-                    """, unsafe_allow_html=True)
-
                 st.subheader(f"Metric {i + 1}")
-
+                system_prompt = st.text_area(f"Enter the System Prompt for Metric {i + 1}:")
                 selected_columns = st.multiselect(
                     f"Select columns for Metric {i + 1}:",
-                    options=required_columns[1:],  # Exclude "Index"
+                    options=required_columns,
                     key=f"columns_{i}"
                 )
+                if selected_columns and system_prompt.strip():
+                    metric_definitions.append({
+                        "system_prompt": system_prompt,
+                        "selected_columns": selected_columns
+                    })
 
-                system_prompt = st.text_area(
-                    f"Enter the System Prompt for Metric {i + 1}:",
-                    height=200  # Double the default height
-                )
-                valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}")
-
-                if len(selected_columns) < 1:
-                    st.error(f"For Metric {i + 1}, you must select at least one column.")
-                    continue
-
-                if valid_prompt:
-                    selected_column_terms = {
-                        col.lower().replace(" ", "_"): col
-                        for col in selected_columns
-                    }
-                    errors = []
-                    for term, original_column in selected_column_terms.items():
-                        if term not in system_prompt.lower():
-                            errors.append(f"'{original_column}' needs to be included as '{term.replace('_', ' ')}' in the system prompt.")
-
-                    if errors:
-                        st.error(
-                            f"For Metric {i + 1}, the following errors were found in your system prompt: "
-                            f"{'; '.join(errors)}"
-                        )
-                        continue
-                    else:
-                        st.success(f"System Prompt for Metric {i + 1} is valid.")
-
-                metric_definitions.append({
-                    "system_prompt": system_prompt,
-                    "selected_columns": selected_columns
-                })
-
-                # End the bordered section for each metric
-                st.markdown("</div>", unsafe_allow_html=True)
-
+            # Step 3: Generate results
             if st.button("Generate Results"):
                 if not metric_definitions:
-                    st.error("Please define at least one metric with a valid system prompt and selected columns.")
+                    st.error("Please define at least one metric with a system prompt and selected columns.")
                 else:
+                    # Map column names to variable names
                     column_mapping = {
                         "Question": "question",
                         "Content": "formatted_content",
@@ -133,38 +105,35 @@ if uploaded_file:
                     }
 
                     results = []
-                    for metric_index, metric in enumerate(metric_definitions, start=1):
+                    for metric in metric_definitions:
                         system_prompt = metric["system_prompt"]
                         selected_columns = metric["selected_columns"]
 
                         for index, row in df.iterrows():
+                            # Prepare dynamic parameters based on selected columns
                             params = {"system_prompt": system_prompt}
                             for col in selected_columns:
                                 if col in column_mapping:
                                     params[column_mapping[col]] = row[col]
 
+                            # Generate score and feedback
                             score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
 
-                            result_row = {
-                                "Index": row["Index"],  # Maintain Index column
-                                "Metric": f"Metric {metric_index}",
+                            # Append results
+                            results.append({
+                                "Metric": f"Metric {metric_definitions.index(metric) + 1}",
                                 "Selected Columns": ", ".join(selected_columns),
                                 "Score": score,
                                 "Criteria": details["criteria"],
                                 "Supporting Evidence": details["supporting_evidence"]
-                            }
+                            })
 
-                            # Include original input columns
-                            for col in required_columns:
-                                if col != "Index":
-                                    result_row[col] = row[col]
-
-                            results.append(result_row)
-
+                    # Convert results to DataFrame
                     results_df = pd.DataFrame(results)
                     st.write("Results:")
                     st.dataframe(results_df)
 
+                    # Download results as CSV
                     st.download_button(
                         label="Download Results as CSV",
                         data=results_df.to_csv(index=False),
