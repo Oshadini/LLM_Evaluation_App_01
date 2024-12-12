@@ -71,7 +71,7 @@ if uploaded_file:
 
             num_metrics = st.number_input("Enter the number of metrics you want to define:", min_value=1, step=1)
 
-            metric_definitions = []
+            all_results = []
             for i in range(num_metrics):
                 st.markdown(f"### Metric {i + 1}")
 
@@ -81,110 +81,45 @@ if uploaded_file:
                     key=f"columns_{i}"
                 )
 
-                toggle_prompt = st.checkbox(
-                    f"Automatically generate system prompt for Metric {i + 1}?", key=f"toggle_prompt_{i}"
+                system_prompt = st.text_area(
+                    f"Enter the System Prompt for Metric {i + 1}:",
+                    height=200
                 )
 
-                if toggle_prompt:
-                    if len(selected_columns) < 1:
-                        st.error(f"For Metric {i + 1}, please select at least one column.")
-                    else:
-                        try:
-                            selected_column_names = ", ".join(selected_columns)
-                            completion = openai.chat.completions.create(
-                                model="gpt-4o",  # Correct model name
-                                messages=[
-                                    {"role": "system", "content": "You are a helpful assistant generating system prompts."},
-                                    {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}."}
-                                ],
-                                max_tokens=200
-                            )
-                            system_prompt = completion.choices[0].message.content.strip()
-                            st.text_area(
-                                f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=200
-                            )
-                            # Validate prompt
-                            st.success(f"System Prompt for Metric {i + 1} is valid.")
-                            # Generate results immediately
-                            column_mapping = {
-                                "Question": "question",
-                                "Content": "formatted_content",
-                                "Answer": "formatted_history",
-                                "Reference Content": "formatted_reference_content",
-                                "Reference Answer": "formatted_reference_answer"
-                            }
-                            results = []
-                            for index, row in df.iterrows():
-                                params = {"system_prompt": system_prompt}
-                                for col in selected_columns:
-                                    if col in column_mapping:
-                                        params[column_mapping[col]] = row[col]
+                if st.button(f"Generate Results for Metric {i + 1}", key=f"generate_results_{i}"):
+                    column_mapping = {
+                        "Question": "question",
+                        "Content": "formatted_content",
+                        "Answer": "formatted_history",
+                        "Reference Content": "formatted_reference_content",
+                        "Reference Answer": "formatted_reference_answer"
+                    }
+                    results = []
+                    for index, row in df.iterrows():
+                        params = {"system_prompt": system_prompt}
+                        for col in selected_columns:
+                            if col in column_mapping:
+                                params[column_mapping[col]] = row[col]
 
-                                score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
-                                result_row = {
-                                    "Index": row["Index"],
-                                    "Metric": f"Metric {i + 1}",
-                                    "Score": score,
-                                    "Criteria": details["criteria"],
-                                    "Supporting Evidence": details["supporting_evidence"]
-                                }
-                                results.append(result_row)
-                            st.write(f"Results for Metric {i + 1}:")
-                            st.dataframe(pd.DataFrame(results))
-                        except Exception as e:
-                            st.error(f"Error generating or processing system prompt: {e}")
-                else:
-                    system_prompt = st.text_area(
-                        f"Enter the System Prompt for Metric {i + 1}:",
-                        height=200
-                    )
-
-                    valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}", key=f"validate_{i}")
-
-                    if valid_prompt:
-                        selected_column_terms = {
-                            col.lower().replace(" ", "_"): col
-                            for col in selected_columns
+                        score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
+                        result_row = {
+                            "Index": row["Index"],
+                            "Metric": f"Metric {i + 1}",
+                            "Score": score,
+                            "Criteria": details["criteria"],
+                            "Supporting Evidence": details["supporting_evidence"]
                         }
-                        errors = []
-                        for term, original_column in selected_column_terms.items():
-                            term_pattern = f"\\b{term.replace('_', ' ')}\\b"
-                            if not re.search(term_pattern, system_prompt, re.IGNORECASE):
-                                errors.append(f"'{original_column}' needs to be included as '{term.replace('_', ' ')}' in the system prompt.")
+                        results.append(result_row)
 
-                        if errors:
-                            st.error(
-                                f"For Metric {i + 1}, the following errors were found in your system prompt: "
-                                f"{'; '.join(errors)}"
-                            )
-                        else:
-                            st.success(f"System Prompt for Metric {i + 1} is valid.")
+                    metric_results = pd.DataFrame(results)
+                    st.write(f"Results for Metric {i + 1}:")
+                    st.dataframe(metric_results)
+                    all_results.append(metric_results)
 
-                    if st.button(f"Generate Results for Metric {i + 1}", key=f"generate_results_{i}"):
-                        column_mapping = {
-                            "Question": "question",
-                            "Content": "formatted_content",
-                            "Answer": "formatted_history",
-                            "Reference Content": "formatted_reference_content",
-                            "Reference Answer": "formatted_reference_answer"
-                        }
-                        results = []
-                        for index, row in df.iterrows():
-                            params = {"system_prompt": system_prompt}
-                            for col in selected_columns:
-                                if col in column_mapping:
-                                    params[column_mapping[col]] = row[col]
+            if all_results and st.button("Generate Concatenated Results Table"):
+                concatenated_results = pd.concat(all_results, ignore_index=True)
+                st.write("Concatenated Results Table:")
+                st.dataframe(concatenated_results)
 
-                            score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
-                            result_row = {
-                                "Index": row["Index"],
-                                "Metric": f"Metric {i + 1}",
-                                "Score": score,
-                                "Criteria": details["criteria"],
-                                "Supporting Evidence": details["supporting_evidence"]
-                            }
-                            results.append(result_row)
-                        st.write(f"Results for Metric {i + 1}:")
-                        st.dataframe(pd.DataFrame(results))
     except Exception as e:
         st.error(f"An error occurred: {e}")
