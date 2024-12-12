@@ -71,11 +71,12 @@ if uploaded_file:
 
             num_metrics = st.number_input("Enter the number of metrics you want to define:", min_value=1, step=1)
 
-            # Initialize session state to store system prompts
+            # Initialize session state to store system prompts and results
             if "system_prompts" not in st.session_state:
                 st.session_state.system_prompts = {}
+            if "combined_results" not in st.session_state:
+                st.session_state.combined_results = []
 
-            combined_results = []
             for i in range(num_metrics):
                 st.markdown(f"### Metric {i + 1}")
 
@@ -165,13 +166,16 @@ if uploaded_file:
                                 "Supporting Evidence": details["supporting_evidence"]
                             }
                             results.append(result_row)
-                        combined_results.extend(results)
+                        st.session_state.combined_results.extend(results)
                         st.write(f"Results for Metric {i + 1}:")
                         st.dataframe(pd.DataFrame(results))
 
-            if combined_results:
-                if st.button("Generate Combined Results"):
+            # Button for generating combined results
+            if st.button("Generate Combined Results"):
+                if st.session_state.combined_results:
                     st.write("Combined Results:")
-                    st.dataframe(pd.DataFrame(combined_results))
+                    st.dataframe(pd.DataFrame(st.session_state.combined_results))
+                else:
+                    st.warning("No results to combine. Please generate results for individual metrics first.")
     except Exception as e:
         st.error(f"An error occurred: {e}")
