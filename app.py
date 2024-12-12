@@ -98,8 +98,8 @@ if uploaded_file:
                             try:
                                 selected_column_names = ", ".join(selected_columns)
                                 completion = openai.chat.completions.create(
-                                    model="gpt-4o",  # Correct model name
-                                    messages=[
+                                    model="gpt-4",  # Correct model name
+                                    messages=[ 
                                         {"role": "system", "content": "You are a helpful assistant generating system prompts."},
                                         {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}."}
                                     ],
@@ -142,33 +142,34 @@ if uploaded_file:
                         else:
                             st.success(f"System Prompt for Metric {i + 1} is valid.")
 
-                    if st.button(f"Generate Results for Metric {i + 1}", key=f"generate_results_{i}"):
-                        column_mapping = {
-                            "Question": "question",
-                            "Content": "formatted_content",
-                            "Answer": "formatted_history",
-                            "Reference Content": "formatted_reference_content",
-                            "Reference Answer": "formatted_reference_answer"
-                        }
-                        results = []
-                        for index, row in df.iterrows():
-                            params = {"system_prompt": system_prompt}
-                            for col in selected_columns:
-                                if col in column_mapping:
-                                    params[column_mapping[col]] = row[col]
+                # Button for generating results for each metric
+                if st.button(f"Generate Results for Metric {i + 1}", key=f"generate_results_{i}"):
+                    column_mapping = {
+                        "Question": "question",
+                        "Content": "formatted_content",
+                        "Answer": "formatted_history",
+                        "Reference Content": "formatted_reference_content",
+                        "Reference Answer": "formatted_reference_answer"
+                    }
+                    results = []
+                    for index, row in df.iterrows():
+                        params = {"system_prompt": system_prompt}
+                        for col in selected_columns:
+                            if col in column_mapping:
+                                params[column_mapping[col]] = row[col]
 
-                            score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
-                            result_row = {
-                                "Index": row["Index"],
-                                "Metric": f"Metric {i + 1}",
-                                "Score": score,
-                                "Criteria": details["criteria"],
-                                "Supporting Evidence": details["supporting_evidence"]
-                            }
-                            results.append(result_row)
-                        st.session_state.combined_results.extend(results)
-                        st.write(f"Results for Metric {i + 1}:")
-                        st.dataframe(pd.DataFrame(results))
+                        score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
+                        result_row = {
+                            "Index": row["Index"],
+                            "Metric": f"Metric {i + 1}",
+                            "Score": score,
+                            "Criteria": details["criteria"],
+                            "Supporting Evidence": details["supporting_evidence"]
+                        }
+                        results.append(result_row)
+                    st.session_state.combined_results.extend(results)
+                    st.write(f"Results for Metric {i + 1}:")
+                    st.dataframe(pd.DataFrame(results))
 
             # Button for generating combined results
             if st.button("Generate Combined Results"):
