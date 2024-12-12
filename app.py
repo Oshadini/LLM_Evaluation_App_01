@@ -105,7 +105,25 @@ if uploaded_file:
                             st.text_area(
                                 f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=200
                             )
-                            st.success(f"System Prompt for Metric {i + 1} is valid.")
+
+                            # Validate prompt
+                            selected_column_terms = {
+                                col.lower().replace(" ", "_"): col
+                                for col in selected_columns
+                            }
+                            errors = []
+                            for term, original_column in selected_column_terms.items():
+                                term_pattern = f"\\b{term.replace('_', ' ')}\\b"
+                                if not re.search(term_pattern, system_prompt, re.IGNORECASE):
+                                    errors.append(f"'{original_column}' needs to be included as '{term.replace('_', ' ')}' in the system prompt.")
+
+                            if errors:
+                                st.error(
+                                    f"For Metric {i + 1}, the following errors were found in the auto-generated system prompt: "
+                                    f"{'; '.join(errors)}"
+                                )
+                            else:
+                                st.success(f"Auto-generated System Prompt for Metric {i + 1} is valid.")
                         except Exception as e:
                             st.error(f"Error generating or processing system prompt: {e}")
                 else:
@@ -113,6 +131,27 @@ if uploaded_file:
                         f"Enter the System Prompt for Metric {i + 1}:",
                         height=200
                     )
+
+                    valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}", key=f"validate_{i}")
+
+                    if valid_prompt:
+                        selected_column_terms = {
+                            col.lower().replace(" ", "_"): col
+                            for col in selected_columns
+                        }
+                        errors = []
+                        for term, original_column in selected_column_terms.items():
+                            term_pattern = f"\\b{term.replace('_', ' ')}\\b"
+                            if not re.search(term_pattern, system_prompt, re.IGNORECASE):
+                                errors.append(f"'{original_column}' needs to be included as '{term.replace('_', ' ')}' in the system prompt.")
+
+                        if errors:
+                            st.error(
+                                f"For Metric {i + 1}, the following errors were found in your system prompt: "
+                                f"{'; '.join(errors)}"
+                            )
+                        else:
+                            st.success(f"System Prompt for Metric {i + 1} is valid.")
 
                 if st.button(f"Generate Results for Metric {i + 1}", key=f"generate_results_{i}"):
                     column_mapping = {
