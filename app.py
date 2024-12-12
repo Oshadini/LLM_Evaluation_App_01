@@ -166,12 +166,12 @@ if uploaded_file:
 
                         score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
                         result_row = {
+                            "Index": row["Index"],
                             "Metric": f"Metric {i + 1}",
                             "Selected Columns": ", ".join(selected_columns),
                             "Score": score,
                             "Criteria": details["criteria"],
                             "Supporting Evidence": details["supporting_evidence"],
-                            "Index": row["Index"],
                             "Question": row["Question"],
                             "Context": row["Context"],
                             "Answer": row["Answer"],
