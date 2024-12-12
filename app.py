@@ -93,7 +93,7 @@ if uploaded_file:
                 )
 
                 toggle_prompt = st.checkbox(
-                    f"Automatically generate system prompt for Metric {i + 1}?", key=f"toggle_prompt_{i}"
+                    f"Automatically generate system prompt for Metric {i + 1}", key=f"toggle_prompt_{i}"
                 )
 
                 if toggle_prompt:
@@ -184,7 +184,7 @@ if uploaded_file:
                     st.dataframe(pd.DataFrame(results))
 
             # Button for generating combined results - only show if more than one metric is selected
-            if num_metrics > 1 and st.button("Generate Combined Results"):
+            if num_metrics > 1 and st.button("Generate Overall Results"):
                 if st.session_state.combined_results:
                     st.write("Combined Results:")
                     st.dataframe(pd.DataFrame(st.session_state.combined_results))
