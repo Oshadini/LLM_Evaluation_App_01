@@ -71,7 +71,8 @@ if uploaded_file:
 
             num_metrics = st.number_input("Enter the number of metrics you want to define:", min_value=1, step=1)
 
-            all_results = []
+            all_results = {}  # Dictionary to store individual metric results
+
             for i in range(num_metrics):
                 st.markdown(f"### Metric {i + 1}")
 
@@ -81,10 +82,37 @@ if uploaded_file:
                     key=f"columns_{i}"
                 )
 
-                system_prompt = st.text_area(
-                    f"Enter the System Prompt for Metric {i + 1}:",
-                    height=200
+                toggle_prompt = st.checkbox(
+                    f"Automatically generate system prompt for Metric {i + 1}?", key=f"toggle_prompt_{i}"
                 )
+
+                system_prompt = ""
+                if toggle_prompt:
+                    if len(selected_columns) < 1:
+                        st.error(f"For Metric {i + 1}, please select at least one column.")
+                    else:
+                        try:
+                            selected_column_names = ", ".join(selected_columns)
+                            completion = openai.chat.completions.create(
+                                model="gpt-4o",  # Correct model name
+                                messages=[
+                                    {"role": "system", "content": "You are a helpful assistant generating system prompts."},
+                                    {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}."}
+                                ],
+                                max_tokens=200
+                            )
+                            system_prompt = completion.choices[0].message.content.strip()
+                            st.text_area(
+                                f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=200
+                            )
+                            st.success(f"System Prompt for Metric {i + 1} is valid.")
+                        except Exception as e:
+                            st.error(f"Error generating or processing system prompt: {e}")
+                else:
+                    system_prompt = st.text_area(
+                        f"Enter the System Prompt for Metric {i + 1}:",
+                        height=200
+                    )
 
                 if st.button(f"Generate Results for Metric {i + 1}", key=f"generate_results_{i}"):
                     column_mapping = {
@@ -110,16 +138,16 @@ if uploaded_file:
                             "Supporting Evidence": details["supporting_evidence"]
                         }
                         results.append(result_row)
-
-                    metric_results = pd.DataFrame(results)
+                    metric_df = pd.DataFrame(results)
                     st.write(f"Results for Metric {i + 1}:")
-                    st.dataframe(metric_results)
-                    all_results.append(metric_results)
+                    st.dataframe(metric_df)
+                    all_results[f"Metric {i + 1}"] = metric_df
 
-            if all_results and st.button("Generate Concatenated Results Table"):
-                concatenated_results = pd.concat(all_results, ignore_index=True)
-                st.write("Concatenated Results Table:")
-                st.dataframe(concatenated_results)
+            if all_results:
+                if st.button("Generate Concatenated Results Table"):
+                    concatenated_results = pd.concat(all_results.values(), ignore_index=True)
+                    st.write("Concatenated Results Table:")
+                    st.dataframe(concatenated_results)
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
