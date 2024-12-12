@@ -25,12 +25,12 @@ class prompt_with_conversation_relevence(fOpenAI):
             user_prompt += "question: {question}\n\n"
         if "formatted_history" in kwargs:
             user_prompt += "answer: {formatted_history}\n\n"
-        if "formatted_reference_content" in kwargs:
-            user_prompt += "reference_content: {formatted_reference_content}\n\n"
+        if "formatted_reference_context" in kwargs:
+            user_prompt += "reference_context: {formatted_reference_context}\n\n"
         if "formatted_reference_answer" in kwargs:
             user_prompt += "reference_answer: {formatted_reference_answer}\n\n"
-        if "formatted_content" in kwargs:
-            user_prompt += "content: {formatted_content}\n\n"
+        if "formatted_context" in kwargs:
+            user_prompt += "context: {formatted_context}\n\n"
         user_prompt += "RELEVANCE: "
 
         user_prompt = user_prompt.format(**kwargs)
@@ -54,7 +54,7 @@ prompt_with_conversation_relevence_custom = prompt_with_conversation_relevence()
 
 # Streamlit UI
 st.title("LLM Evaluation Tool")
-st.write("Upload an Excel file with columns: Index, Question, Content, Answer, Reference Content, Reference Answer to evaluate relevance scores.")
+st.write("Upload an Excel file with columns: Index, Question, Context, Answer, Reference Context, Reference Answer to evaluate relevance scores.")
 
 uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
 
@@ -62,7 +62,7 @@ if uploaded_file:
     try:
         df = pd.read_excel(uploaded_file)
 
-        required_columns = ["Index", "Question", "Content", "Answer", "Reference Content", "Reference Answer"]
+        required_columns = ["Index", "Question", "Context", "Answer", "Reference Context", "Reference Answer"]
         if not all(col in df.columns for col in required_columns):
             st.error(f"The uploaded file must contain these columns: {', '.join(required_columns)}.")
         else:
@@ -146,9 +146,9 @@ if uploaded_file:
                 if st.button(f"Generate Results for Metric {i + 1}", key=f"generate_results_{i}"):
                     column_mapping = {
                         "Question": "question",
-                        "Content": "formatted_content",
+                        "Context": "formatted_context",
                         "Answer": "formatted_history",
-                        "Reference Content": "formatted_reference_content",
+                        "Reference Context": "formatted_reference_context",
                         "Reference Answer": "formatted_reference_answer"
                     }
                     results = []
