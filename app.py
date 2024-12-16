@@ -26,7 +26,7 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
             evaluation_prompt += "- Score: Provide an overall score for the response (0-10).\n"
 
             # Call GPT-4 API
-            completion =openai.chat.completions.create(
+            completion = openai.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": "You are an evaluator analyzing agent conversations."},
@@ -34,8 +34,9 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
                 ]
             )
 
+            # Debug the raw response content
             response_content = completion.choices[0].message.content.strip()
-            print("DEBUG: GPT-4 response content:", response_content)  # Debugging output
+            print("DEBUG: Raw GPT-4 Response:\n", response_content)
 
             # Parse the response
             parsed_response = {
@@ -51,7 +52,9 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
                 "Agent Response": row.get("Agent Response", "")
             }
 
-            for line in response_content.split("\n"):
+            # Extract fields from the response
+            lines = response_content.split("\n")
+            for line in lines:
                 if line.startswith("Criteria:"):
                     parsed_response["Criteria"] = line.replace("Criteria:", "").strip()
                 elif line.startswith("Supporting Evidence:"):
@@ -61,17 +64,20 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
                 elif line.startswith("Score:"):
                     parsed_response["Score"] = line.replace("Score:", "").strip()
 
-            # Debugging output for each parsed field
-            print("DEBUG: Parsed Response -> Index:", parsed_response["Index"])
-            print("DEBUG: Parsed Response -> Metric:", parsed_response["Metric"])
-            print("DEBUG: Parsed Response -> Score:", parsed_response["Score"])
-            print("DEBUG: Parsed Response -> Criteria:", parsed_response["Criteria"])
-            print("DEBUG: Parsed Response -> Supporting Evidence:", parsed_response["Supporting Evidence"])
-            print("DEBUG: Parsed Response -> Tool Triggered:", parsed_response["Tool Triggered"])
+            # Debug each field in the parsed response
+            print("DEBUG: Parsed Response Fields:")
+            print("  Index:", parsed_response["Index"])
+            print("  Metric:", parsed_response["Metric"])
+            print("  Selected Columns:", parsed_response["Selected Columns"])
+            print("  Score:", parsed_response["Score"])
+            print("  Criteria:", parsed_response["Criteria"])
+            print("  Supporting Evidence:", parsed_response["Supporting Evidence"])
+            print("  Tool Triggered:", parsed_response["Tool Triggered"])
 
             results.append(parsed_response)
 
         except Exception as e:
+            # Append error details for this row
             results.append({
                 "Index": row["Index"],
                 "Metric": metric_name,
@@ -85,7 +91,8 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
                 "Agent Response": row.get("Agent Response", "")
             })
 
-            print(f"DEBUG: Error processing conversation for Index {row['Index']} ->", e)  # Debugging output for errors
+            # Debugging output for errors
+            print(f"DEBUG: Error processing conversation for Index {row['Index']} ->", e)
 
     return results
 
