@@ -37,7 +37,7 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
             # Debug the raw response content
             response_content = completion.choices[0].message.content.strip()
             #response_content2 = completion.choices[1].message.content.strip()
-            st.write(response_content2)
+            #st.write(response_content2)
             print("DEBUG: Raw GPT-4 Response:\n", response_content)
 
             # Parse the response
