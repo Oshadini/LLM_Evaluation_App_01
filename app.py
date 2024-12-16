@@ -169,7 +169,7 @@ if uploaded_file:
                         st.error("Please select at least one column.")
                     else:
                         st.write("Evaluating conversations. Please wait...")
-                        st.(results)
+                        st.write(results)
                         results = evaluate_conversation(system_prompt, selected_columns, df, f"Metric {i + 1}")
                         st.session_state.combined_results.extend(results)
                         st.write(f"Results for Metric {i + 1}:")
