@@ -50,6 +50,8 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
                 "Agent Response": row.get("Agent Response", "")
             }
 
+            st.write(parsed_response)
+
             for line in response_content.split("\n"):
                 if line.startswith("Criteria:"):
                     parsed_response["Criteria"] = line.replace("Criteria:", "").strip()
