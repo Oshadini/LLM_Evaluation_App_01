@@ -7,7 +7,7 @@ import openai
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Define function to evaluate conversation using GPT-4
-def evaluate_conversation(system_prompt: str, selected_columns: list, conversation: pd.DataFrame) -> list:
+def evaluate_conversation(system_prompt: str, selected_columns: list, conversation: pd.DataFrame, metric_name: str) -> list:
     """
     Evaluate the conversation using GPT-4 based on the system prompt provided by the user.
     """
@@ -28,6 +28,7 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
             evaluation_prompt += "- Criteria: Evaluate the quality of the agent's response.\n"
             evaluation_prompt += "- Supporting Evidence: Justify your evaluation with evidence from the conversation.\n"
             evaluation_prompt += "- Tool Triggered: Identify any tools triggered during the response.\n"
+            evaluation_prompt += "- Score: Provide an overall score for the response.\n"
 
             # Call GPT-4 API
             completion = openai.chat.completions.create(
@@ -39,16 +40,16 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
             )
 
             response_content = completion.choices[0].message.content.strip()
-            
+
             # Parse the response
             parsed_response = {
                 "Index": row["Index"],
+                "Metric": metric_name,
+                "Selected Columns": ", ".join(selected_columns),
+                "Score": "",
                 "Criteria": "",
                 "Supporting Evidence": "",
                 "Tool Triggered": "",
-                "Score": "",
-                "Metric": "",
-                "Selected Columns": ", ".join(selected_columns),
                 "User Input": row.get("User Input", ""),
                 "Agent Prompt": row.get("Agent Prompt", ""),
                 "Agent Response": row.get("Agent Response", "")
@@ -69,7 +70,7 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
         except Exception as e:
             results.append({
                 "Index": row["Index"],
-                "Metric": "Error",
+                "Metric": metric_name,
                 "Selected Columns": ", ".join(selected_columns),
                 "Score": "N/A",
                 "Criteria": "Error",
@@ -170,7 +171,7 @@ if uploaded_file:
                         st.error("Please select at least one column.")
                     else:
                         st.write("Evaluating conversations. Please wait...")
-                        results = evaluate_conversation(system_prompt, selected_columns, df)
+                        results = evaluate_conversation(system_prompt, selected_columns, df, f"Metric {i + 1}")
                         st.session_state.combined_results.extend(results)
                         st.write(f"Results for Metric {i + 1}:")
                         st.dataframe(pd.DataFrame(results))
