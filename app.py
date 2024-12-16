@@ -11,28 +11,26 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
     """
     Evaluate the conversation using GPT-4 based on the system prompt provided by the user.
     """
-    column_mapping = {
-        "User Input": "User Input",
-        "Agent Prompt": "Agent Prompt",
-        "Agent Response": "Agent Response"
-    }
-
     results = []
     for index, row in conversation.iterrows():
         try:
             # Construct the evaluation prompt for GPT-4
             evaluation_prompt = f"System Prompt: {system_prompt}\n\n"
-            for col in selected_columns:
-                evaluation_prompt += f"{column_mapping[col]}: {row[col]}\n"
-            evaluation_prompt += "\nProvide the following evaluation:\n"
-            evaluation_prompt += "- Criteria: Evaluate the quality of the agent's response.\n"
-            evaluation_prompt += "- Supporting Evidence: Justify your evaluation with evidence from the conversation.\n"
-            evaluation_prompt += "- Tool Triggered: Identify any tools triggered during the response.\n"
-            evaluation_prompt += "- Score: Provide an overall score for the response.\n"
+            evaluation_prompt += f"Index: {row['Index']}\n"
+            evaluation_prompt += f"User Input: {row['User Input']}\n"
+            evaluation_prompt += f"Agent Prompt: {row['Agent Prompt']}\n"
+            evaluation_prompt += f"Agent Response: {row['Agent Response']}\n\n"
+            evaluation_prompt += (
+                "Provide the following evaluation:\n"
+                "- Criteria: Evaluate the quality of the agent's response.\n"
+                "- Supporting Evidence: Justify your evaluation with evidence from the conversation.\n"
+                "- Tool Triggered: Identify any tools triggered during the response.\n"
+                "- Score: Provide an overall score for the response.\n"
+            )
 
             # Call GPT-4 API
-            completion = openai.chat.completions.create(
-                model="gpt-4o",
+            completion = openai.ChatCompletion.create(
+                model="gpt-4",
                 messages=[
                     {"role": "system", "content": "You are an evaluator analyzing agent conversations."},
                     {"role": "user", "content": evaluation_prompt}
@@ -139,7 +137,7 @@ if uploaded_file:
                         if f"metric_{i}" not in st.session_state.system_prompts:
                             try:
                                 selected_column_names = ", ".join(selected_columns)
-                                completion = openai.ChatCompletion.create(
+                                completion = openai.chat.completions.create(
                                     model="gpt-4",
                                     messages=[
                                         {"role": "system", "content": "You are a helpful assistant generating system prompts."},
