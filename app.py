@@ -56,13 +56,13 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
             for line in response_content.split("\n"):
                 line = line.strip()  # Remove leading/trailing spaces
                 if "Criteria:" in line:
-                    parsed_response["Criteria"] = line.split("Criteria:", 1)[2].strip()
+                    parsed_response["Criteria"] = line.split("Criteria:", 1)[1].strip()
                 elif "Supporting Evidence:" in line:
-                    parsed_response["Supporting Evidence"] = line.split("Supporting Evidence:", 1)[2].strip()
+                    parsed_response["Supporting Evidence"] = line.split("Supporting Evidence:", 1)[1].strip()
                 elif "Tool Triggered:" in line:
-                    parsed_response["Tool Triggered"] = line.split("Tool Triggered:", 1)[2].strip()
+                    parsed_response["Tool Triggered"] = line.split("Tool Triggered:", 1)[1].strip()
                 elif "Score:" in line:
-                    parsed_response["Score"] = line.split("Score:", 1)[2].strip()
+                    parsed_response["Score"] = line.split("Score:", 1)[1].strip()
 
             # Log the parsed response
             print(f"DEBUG: Parsed Response for Index {row['Index']}: {parsed_response}")
