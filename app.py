@@ -6,68 +6,66 @@ import openai
 # Set OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-def evaluate_metric(system_prompt: str, df: pd.DataFrame, selected_columns: list) -> pd.DataFrame:
+# Define function to evaluate conversation using GPT-4
+def evaluate_conversation(system_prompt: str, selected_columns: list, conversation: pd.DataFrame) -> list:
     """
-    Evaluate the selected metric using GPT-4 based on the user-provided or generated system prompt.
+    Evaluate the conversation using GPT-4 based on the system prompt provided by the user.
     """
     column_mapping = {
-        "User Input": "user_input",
-        "Agent Prompt": "agent_prompt",
-        "Agent Response": "agent_response",
+        "User Input": "User Input",
+        "Agent Prompt": "Agent Prompt",
+        "Agent Response": "Agent Response"
     }
-    
+
     results = []
-    for index, row in df.iterrows():
+    for index, row in conversation.iterrows():
         try:
-            # Construct evaluation prompt for GPT-4
-            evaluation_prompt = (
-                f"System Prompt: {system_prompt}\n\n"
-                f"Index: {row['Index']}\n"
-                f"{', '.join([f'{col}: {row[col]}' for col in selected_columns])}\n\n"
-                "Provide the following evaluation:\n"
-                "- Score: Rate the quality of the agent's response on a scale of 1-10.\n"
-                "- Criteria: Describe the criteria used for this evaluation.\n"
-                "- Supporting Evidence: Justify the score using details from the input.\n"
-                "- Tool Triggered: Identify any tools triggered by the agent."
-            )
-            
+            # Construct the evaluation prompt for GPT-4
+            evaluation_prompt = f"System Prompt: {system_prompt}\n\n"
+            for col in selected_columns:
+                evaluation_prompt += f"{column_mapping[col]}: {row[col]}\n"
+            evaluation_prompt += "\nProvide the following evaluation:\n"
+            evaluation_prompt += "- Criteria: Evaluate the quality of the agent's response.\n"
+            evaluation_prompt += "- Supporting Evidence: Justify your evaluation with evidence from the conversation.\n"
+            evaluation_prompt += "- Tool Triggered: Identify any tools triggered during the response.\n"
+
             # Call GPT-4 API
-            completion = openai.ChatCompletion.create(
-                model="gpt-4",
+            completion = openai.chat.completions.create(
+                model="gpt-4o",
                 messages=[
                     {"role": "system", "content": "You are an evaluator analyzing agent conversations."},
                     {"role": "user", "content": evaluation_prompt}
                 ]
             )
-            
+
             response_content = completion.choices[0].message.content.strip()
             
-            # Parse GPT-4 response
+            # Parse the response
             parsed_response = {
                 "Index": row["Index"],
-                "Metric": "",
-                "Selected Columns": ", ".join(selected_columns),
-                "Score": "",
                 "Criteria": "",
                 "Supporting Evidence": "",
                 "Tool Triggered": "",
-                "User Input": row["User Input"],
-                "Agent Prompt": row["Agent Prompt"],
-                "Agent Response": row["Agent Response"]
+                "Score": "",
+                "Metric": "",
+                "Selected Columns": ", ".join(selected_columns),
+                "User Input": row.get("User Input", ""),
+                "Agent Prompt": row.get("Agent Prompt", ""),
+                "Agent Response": row.get("Agent Response", "")
             }
-            
+
             for line in response_content.split("\n"):
-                if line.startswith("Score:"):
-                    parsed_response["Score"] = line.replace("Score:", "").strip()
-                elif line.startswith("Criteria:"):
+                if line.startswith("Criteria:"):
                     parsed_response["Criteria"] = line.replace("Criteria:", "").strip()
                 elif line.startswith("Supporting Evidence:"):
                     parsed_response["Supporting Evidence"] = line.replace("Supporting Evidence:", "").strip()
                 elif line.startswith("Tool Triggered:"):
                     parsed_response["Tool Triggered"] = line.replace("Tool Triggered:", "").strip()
-            
+                elif line.startswith("Score:"):
+                    parsed_response["Score"] = line.replace("Score:", "").strip()
+
             results.append(parsed_response)
-        
+
         except Exception as e:
             results.append({
                 "Index": row["Index"],
@@ -75,13 +73,14 @@ def evaluate_metric(system_prompt: str, df: pd.DataFrame, selected_columns: list
                 "Selected Columns": ", ".join(selected_columns),
                 "Score": "N/A",
                 "Criteria": "Error",
-                "Supporting Evidence": f"Error processing row: {e}",
+                "Supporting Evidence": f"Error processing conversation: {e}",
                 "Tool Triggered": "N/A",
-                "User Input": row["User Input"],
-                "Agent Prompt": row["Agent Prompt"],
-                "Agent Response": row["Agent Response"]
+                "User Input": row.get("User Input", ""),
+                "Agent Prompt": row.get("Agent Prompt", ""),
+                "Agent Response": row.get("Agent Response", "")
             })
-    return pd.DataFrame(results)
+
+    return results
 
 # Streamlit UI
 st.title("LLM Conversation Evaluation Tool")
@@ -91,6 +90,7 @@ uploaded_file = st.file_uploader("Upload your file", type=["xlsx", "csv"])
 
 if uploaded_file:
     try:
+        # Read uploaded file
         if uploaded_file.name.endswith(".xlsx"):
             df = pd.read_excel(uploaded_file)
         else:
@@ -103,23 +103,30 @@ if uploaded_file:
             st.write("Preview of Uploaded Data:")
             st.dataframe(df.head())
 
-            num_metrics = st.number_input("Enter the number of metrics to define:", min_value=1, step=1)
+            num_metrics = st.number_input("Enter the number of metrics you want to define:", min_value=1, step=1)
 
-            # Store prompts and results in session state
             if "system_prompts" not in st.session_state:
                 st.session_state.system_prompts = {}
             if "combined_results" not in st.session_state:
                 st.session_state.combined_results = []
 
             for i in range(num_metrics):
-                st.markdown(f"### Metric {i + 1}")
+                # Display metric setup
+                st.markdown(f"""
+                    <hr style="border: 5px solid #000000;">
+                    <h3 style="background-color: #f0f0f0; padding: 10px; border: 2px solid #000000;">
+                        Metric {i + 1}
+                    </h3>
+                """, unsafe_allow_html=True)
 
+                # Column selection
                 selected_columns = st.multiselect(
                     f"Select columns for Metric {i + 1}:",
-                    options=required_columns[1:],
+                    options=required_columns[1:],  # Skip the Index column
                     key=f"columns_{i}"
                 )
 
+                # System prompt configuration
                 toggle_prompt = st.checkbox(
                     f"Automatically generate system prompt for Metric {i + 1}", key=f"toggle_prompt_{i}"
                 )
@@ -131,41 +138,45 @@ if uploaded_file:
                         if f"metric_{i}" not in st.session_state.system_prompts:
                             try:
                                 selected_column_names = ", ".join(selected_columns)
-                                completion = openai.chat.completions.create(
-                                    model="gpt-4o",
+                                completion = openai.ChatCompletion.create(
+                                    model="gpt-4",
                                     messages=[
                                         {"role": "system", "content": "You are a helpful assistant generating system prompts."},
-                                        {"role": "user", "content": f"Generate a concise system prompt to evaluate the conversation based on the columns: {selected_column_names}."}
-                                    ]
+                                        {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}."}
+                                    ],
+                                    max_tokens=200
                                 )
                                 system_prompt = completion.choices[0].message.content.strip()
                                 st.session_state.system_prompts[f"metric_{i}"] = system_prompt
                             except Exception as e:
-                                st.error(f"Error generating system prompt: {e}")
+                                st.error(f"Error generating or processing system prompt: {e}")
 
                         system_prompt = st.session_state.system_prompts.get(f"metric_{i}", "")
                         st.text_area(
-                            f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=150
+                            f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=200
                         )
                         st.success(f"System Prompt for Metric {i + 1} is valid.")
                 else:
                     system_prompt = st.text_area(
                         f"Enter the System Prompt for Metric {i + 1}:",
-                        height=150
+                        height=200
                     )
 
+                # Generate results for each metric
                 if st.button(f"Generate Results for Metric {i + 1}", key=f"generate_results_{i}"):
                     if system_prompt.strip() == "":
-                        st.error(f"Please enter or generate a system prompt for Metric {i + 1}.")
+                        st.error("Please enter a valid system prompt.")
+                    elif len(selected_columns) == 0:
+                        st.error("Please select at least one column.")
                     else:
-                        st.write(f"Generating results for Metric {i + 1}. Please wait...")
-                        results_df = evaluate_metric(system_prompt, df, selected_columns)
-                        results_df["Metric"] = f"Metric {i + 1}"
-                        st.session_state.combined_results.extend(results_df.to_dict("records"))
+                        st.write("Evaluating conversations. Please wait...")
+                        results = evaluate_conversation(system_prompt, selected_columns, df)
+                        st.session_state.combined_results.extend(results)
                         st.write(f"Results for Metric {i + 1}:")
-                        st.dataframe(results_df)
+                        st.dataframe(pd.DataFrame(results))
 
-            if num_metrics > 1 and st.button("Generate Combined Results"):
+            # Combine results for all metrics
+            if num_metrics > 1 and st.button("Generate Overall Results"):
                 if st.session_state.combined_results:
                     combined_df = pd.DataFrame(st.session_state.combined_results)
                     st.write("Combined Results:")
