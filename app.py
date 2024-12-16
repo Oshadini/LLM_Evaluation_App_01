@@ -3,7 +3,8 @@ import pandas as pd
 import re
 import openai
 
-# Set OpenAI API key
+# Set OpenAI API keycompl
+
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Define function to evaluate conversation using GPT-4
@@ -38,6 +39,7 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
             )
 
             response_content = completion.choices[0].message.content.strip()
+            st.write(response_content)
 
             # Parse the response
             parsed_response = {
