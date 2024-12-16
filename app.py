@@ -9,25 +9,25 @@ openai.api_key = st.secrets["OPENAI_API_KEY"]
 def evaluate_conversation(system_prompt: str, selected_columns: list, conversation: pd.DataFrame, metric_name: str) -> list:
     """
     Evaluate the conversation using GPT-4 based on the system prompt provided by the user.
-    Treats 'Agent Prompt' as the conversation prompt for evaluation.
     """
     results = []
-    for index, row in conversation.iterrows():
+    for _, row in conversation.iterrows():
         try:
             # Construct the evaluation prompt for GPT-4
-            evaluation_prompt = f"System Prompt: {system_prompt}\n\n"
-            evaluation_prompt += f"Agent Prompt: {row['Agent Prompt']}\n"  # Explicitly treat this as the primary prompt
-            evaluation_prompt += f"User Input: {row['User Input']}\n"
-            evaluation_prompt += f"Agent Response: {row['Agent Response']}\n\n"
-            evaluation_prompt += "Provide the following evaluation:\n"
+            evaluation_prompt = f"{system_prompt}\n\n"
+            evaluation_prompt += f"Conversation:\n"
+            evaluation_prompt += f"- User Input: {row['User Input']}\n"
+            evaluation_prompt += f"- Agent Prompt: {row['Agent Prompt']}\n"
+            evaluation_prompt += f"- Agent Response: {row['Agent Response']}\n"
+            evaluation_prompt += "\nProvide the following evaluation:\n"
             evaluation_prompt += "- Criteria: Evaluate the quality of the agent's response.\n"
             evaluation_prompt += "- Supporting Evidence: Justify your evaluation with evidence from the conversation.\n"
             evaluation_prompt += "- Tool Triggered: Identify any tools triggered during the response.\n"
-            evaluation_prompt += "- Score: Provide an overall score for the response.\n"
+            evaluation_prompt += "- Score: Provide an overall score for the response (0-10).\n"
 
             # Call GPT-4 API
             completion = openai.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4",
                 messages=[
                     {"role": "system", "content": "You are an evaluator analyzing agent conversations."},
                     {"role": "user", "content": evaluation_prompt}
@@ -35,16 +35,16 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
             )
 
             response_content = completion.choices[0].message.content.strip()
-            st.write(response_content)
+
             # Parse the response
             parsed_response = {
                 "Index": row["Index"],
                 "Metric": metric_name,
                 "Selected Columns": ", ".join(selected_columns),
+                "Score": "",
                 "Criteria": "",
                 "Supporting Evidence": "",
                 "Tool Triggered": "",
-                "Score": "",
                 "User Input": row.get("User Input", ""),
                 "Agent Prompt": row.get("Agent Prompt", ""),
                 "Agent Response": row.get("Agent Response", "")
@@ -61,17 +61,16 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
                     parsed_response["Score"] = line.replace("Score:", "").strip()
 
             results.append(parsed_response)
-            st.write(results)
 
         except Exception as e:
             results.append({
                 "Index": row["Index"],
                 "Metric": metric_name,
                 "Selected Columns": ", ".join(selected_columns),
-                "Score": "N/A",
+                "Score": "Error",
                 "Criteria": "Error",
                 "Supporting Evidence": f"Error processing conversation: {e}",
-                "Tool Triggered": "N/A",
+                "Tool Triggered": "Error",
                 "User Input": row.get("User Input", ""),
                 "Agent Prompt": row.get("Agent Prompt", ""),
                 "Agent Response": row.get("Agent Response", "")
