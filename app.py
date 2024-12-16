@@ -41,10 +41,10 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
                 "Index": row["Index"],
                 "Metric": metric_name,
                 "Selected Columns": ", ".join(selected_columns),
-                "Score": "",
                 "Criteria": "",
                 "Supporting Evidence": "",
                 "Tool Triggered": "",
+                "Score": "",
                 "User Input": row.get("User Input", ""),
                 "Agent Prompt": row.get("Agent Prompt", ""),
                 "Agent Response": row.get("Agent Response", "")
