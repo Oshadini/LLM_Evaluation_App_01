@@ -3,8 +3,7 @@ import pandas as pd
 import re
 import openai
 
-# Set OpenAI API keycompl
-
+# Set OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Define function to evaluate conversation using GPT-4
@@ -39,9 +38,8 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
             )
 
             response_content = completion.choices[0].message.content.strip()
-            st.write(response_content)
 
-            # Parse the response
+            # Initialize parsed response
             parsed_response = {
                 "Index": row["Index"],
                 "Metric": metric_name,
@@ -55,6 +53,7 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
                 "Agent Response": row.get("Agent Response", "")
             }
 
+            # Parse GPT response to fill the fields
             for line in response_content.split("\n"):
                 if line.startswith("Criteria:"):
                     parsed_response["Criteria"] = line.replace("Criteria:", "").strip()
@@ -65,6 +64,7 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
                 elif line.startswith("Score:"):
                     parsed_response["Score"] = line.replace("Score:", "").strip()
 
+            # Ensure all fields are captured
             results.append(parsed_response)
 
         except Exception as e:
@@ -148,7 +148,6 @@ if uploaded_file:
                                     max_tokens=200
                                 )
                                 system_prompt = completion.choices[0].message.content.strip()
-                                st.wrtite(system_prompt)
                                 st.session_state.system_prompts[f"metric_{i}"] = system_prompt
                             except Exception as e:
                                 st.error(f"Error generating or processing system prompt: {e}")
@@ -172,9 +171,7 @@ if uploaded_file:
                         st.error("Please select at least one column.")
                     else:
                         st.write("Evaluating conversations. Please wait...")
-                        
                         results = evaluate_conversation(system_prompt, selected_columns, df, f"Metric {i + 1}")
-                        st.write(results)
                         st.session_state.combined_results.extend(results)
                         st.write(f"Results for Metric {i + 1}:")
                         st.dataframe(pd.DataFrame(results))
