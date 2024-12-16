@@ -26,7 +26,7 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
             evaluation_prompt += "- Score: Provide an overall score for the response (0-10).\n"
 
             # Call GPT-4 API
-            completion = openai.chat.completions.create(
+            completion =openai.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": "You are an evaluator analyzing agent conversations."},
@@ -35,35 +35,41 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
             )
 
             response_content = completion.choices[0].message.content.strip()
+            print("DEBUG: GPT-4 response content:", response_content)  # Debugging output
 
-            # Parse the response and ensure all data is correctly captured
+            # Parse the response
             parsed_response = {
                 "Index": row["Index"],
                 "Metric": metric_name,
                 "Selected Columns": ", ".join(selected_columns),
+                "Score": "",
                 "Criteria": "",
                 "Supporting Evidence": "",
                 "Tool Triggered": "",
-                "Score": "",
                 "User Input": row.get("User Input", ""),
                 "Agent Prompt": row.get("Agent Prompt", ""),
                 "Agent Response": row.get("Agent Response", "")
             }
 
             for line in response_content.split("\n"):
-                line = line.strip()
                 if line.startswith("Criteria:"):
-                    parsed_response["Criteria"] = line[len("Criteria:"):].strip()
+                    parsed_response["Criteria"] = line.replace("Criteria:", "").strip()
                 elif line.startswith("Supporting Evidence:"):
-                    parsed_response["Supporting Evidence"] = line[len("Supporting Evidence:"):].strip()
+                    parsed_response["Supporting Evidence"] = line.replace("Supporting Evidence:", "").strip()
                 elif line.startswith("Tool Triggered:"):
-                    parsed_response["Tool Triggered"] = line[len("Tool Triggered:"):].strip()
+                    parsed_response["Tool Triggered"] = line.replace("Tool Triggered:", "").strip()
                 elif line.startswith("Score:"):
-                    parsed_response["Score"] = line[len("Score:"):].strip()
+                    parsed_response["Score"] = line.replace("Score:", "").strip()
 
-            # Append the parsed response to results
+            # Debugging output for each parsed field
+            print("DEBUG: Parsed Response -> Index:", parsed_response["Index"])
+            print("DEBUG: Parsed Response -> Metric:", parsed_response["Metric"])
+            print("DEBUG: Parsed Response -> Score:", parsed_response["Score"])
+            print("DEBUG: Parsed Response -> Criteria:", parsed_response["Criteria"])
+            print("DEBUG: Parsed Response -> Supporting Evidence:", parsed_response["Supporting Evidence"])
+            print("DEBUG: Parsed Response -> Tool Triggered:", parsed_response["Tool Triggered"])
+
             results.append(parsed_response)
-            st.write(results)
 
         except Exception as e:
             results.append({
@@ -78,6 +84,8 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
                 "Agent Prompt": row.get("Agent Prompt", ""),
                 "Agent Response": row.get("Agent Response", "")
             })
+
+            print(f"DEBUG: Error processing conversation for Index {row['Index']} ->", e)  # Debugging output for errors
 
     return results
 
