@@ -138,7 +138,7 @@ if uploaded_file:
                             try:
                                 selected_column_names = ", ".join(selected_columns)
                                 completion = openai.chat.completions.create(
-                                    model="gpt-4",
+                                    model="gpt-4o",
                                     messages=[
                                         {"role": "system", "content": "You are a helpful assistant generating system prompts."},
                                         {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}."}
