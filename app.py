@@ -61,6 +61,7 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
                     parsed_response["Score"] = line.replace("Score:", "").strip()
 
             results.append(parsed_response)
+            st.write(results)
 
         except Exception as e:
             results.append({
