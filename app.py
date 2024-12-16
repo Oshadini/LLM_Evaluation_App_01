@@ -38,7 +38,7 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
             )
 
             response_content = completion.choices[0].message.content.strip()
-
+            st.write(response_content)
             # Initialize parsed response
             parsed_response = {
                 "Index": row["Index"],
