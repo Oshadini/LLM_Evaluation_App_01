@@ -27,7 +27,7 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
 
             # Call GPT-4 API
             completion = openai.chat.completions.create(
-                model="gpt-4",
+                model="gpt-4o",
                 messages=[
                     {"role": "system", "content": "You are an evaluator analyzing agent conversations."},
                     {"role": "user", "content": evaluation_prompt}
@@ -138,7 +138,7 @@ if uploaded_file:
                             try:
                                 selected_column_names = ", ".join(selected_columns)
                                 completion = openai.chat.completions.create(
-                                    model="gpt-4",
+                                    model="gpt-4o",
                                     messages=[
                                         {"role": "system", "content": "You are a helpful assistant generating system prompts."},
                                         {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}."}
