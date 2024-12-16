@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import re
 import openai
 
 # Set OpenAI API key
@@ -10,23 +9,21 @@ openai.api_key = st.secrets["OPENAI_API_KEY"]
 def evaluate_conversation(system_prompt: str, selected_columns: list, conversation: pd.DataFrame, metric_name: str) -> list:
     """
     Evaluate the conversation using GPT-4 based on the system prompt provided by the user.
+    Treats 'Agent Prompt' as the conversation prompt for evaluation.
     """
     results = []
     for index, row in conversation.iterrows():
         try:
             # Construct the evaluation prompt for GPT-4
             evaluation_prompt = f"System Prompt: {system_prompt}\n\n"
-            evaluation_prompt += f"Index: {row['Index']}\n"
+            evaluation_prompt += f"Agent Prompt: {row['Agent Prompt']}\n"  # Explicitly treat this as the primary prompt
             evaluation_prompt += f"User Input: {row['User Input']}\n"
-            evaluation_prompt += f"Agent Prompt: {row['Agent Prompt']}\n"
             evaluation_prompt += f"Agent Response: {row['Agent Response']}\n\n"
-            evaluation_prompt += (
-                "Provide the following evaluation:\n"
-                "- Criteria: Evaluate the quality of the agent's response.\n"
-                "- Supporting Evidence: Justify your evaluation with evidence from the conversation.\n"
-                "- Tool Triggered: Identify any tools triggered during the response.\n"
-                "- Score: Provide an overall score for the response.\n"
-            )
+            evaluation_prompt += "Provide the following evaluation:\n"
+            evaluation_prompt += "- Criteria: Evaluate the quality of the agent's response.\n"
+            evaluation_prompt += "- Supporting Evidence: Justify your evaluation with evidence from the conversation.\n"
+            evaluation_prompt += "- Tool Triggered: Identify any tools triggered during the response.\n"
+            evaluation_prompt += "- Score: Provide an overall score for the response.\n"
 
             # Call GPT-4 API
             completion = openai.chat.completions.create(
@@ -38,8 +35,8 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
             )
 
             response_content = completion.choices[0].message.content.strip()
-            st.write(response_content)
-            # Initialize parsed response
+
+            # Parse the response
             parsed_response = {
                 "Index": row["Index"],
                 "Metric": metric_name,
@@ -53,7 +50,6 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
                 "Agent Response": row.get("Agent Response", "")
             }
 
-            # Parse GPT response to fill the fields
             for line in response_content.split("\n"):
                 if line.startswith("Criteria:"):
                     parsed_response["Criteria"] = line.replace("Criteria:", "").strip()
@@ -64,7 +60,6 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
                 elif line.startswith("Score:"):
                     parsed_response["Score"] = line.replace("Score:", "").strip()
 
-            # Ensure all fields are captured
             results.append(parsed_response)
 
         except Exception as e:
@@ -140,7 +135,7 @@ if uploaded_file:
                             try:
                                 selected_column_names = ", ".join(selected_columns)
                                 completion = openai.chat.completions.create(
-                                    model="gpt-4o",
+                                    model="gpt-4",
                                     messages=[
                                         {"role": "system", "content": "You are a helpful assistant generating system prompts."},
                                         {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}."}
