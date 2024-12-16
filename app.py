@@ -146,6 +146,7 @@ if uploaded_file:
                                     max_tokens=200
                                 )
                                 system_prompt = completion.choices[0].message.content.strip()
+                                st.wrtite(system_prompt)
                                 st.session_state.system_prompts[f"metric_{i}"] = system_prompt
                             except Exception as e:
                                 st.error(f"Error generating or processing system prompt: {e}")
