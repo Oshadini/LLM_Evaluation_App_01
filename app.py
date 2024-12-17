@@ -59,7 +59,7 @@ st.markdown(
 )
 
 # Streamlit App Title
-st.markdown('<div class="header-text">🚀 Enhanced Streamlit App</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-text">LLM Evaluation Tool</div>', unsafe_allow_html=True)
 
 # Use session state to track which button was clicked
 if "active_page" not in st.session_state:
@@ -167,7 +167,7 @@ elif st.session_state.active_page == "code1":
     prompt_with_conversation_relevence_custom = prompt_with_conversation_relevence()
     
     # Streamlit UI
-    st.title("LLM Evaluation Tool")
+    #st.title("LLM Evaluation Tool")
     st.write("Upload an Excel file with columns: Index, Question, Context, Answer, Reference Context, Reference Answer to evaluate relevance scores.")
     
     uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
