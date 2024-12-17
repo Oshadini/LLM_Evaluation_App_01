@@ -271,7 +271,7 @@ elif st.session_state.active_page == "code1":
                                 st.success(f"System Prompt for Metric {i + 1} is valid.")
     
                     # Button for generating results for each metric
-                    if st.button(f"Results for Metric {i + 1}", key=f"generate_results_{i}"):
+                    if st.button(f"Metric {i + 1} Results", key=f"generate_results_{i}"):
                         column_mapping = {
                             "Question": "question",
                             "Context": "formatted_context",
