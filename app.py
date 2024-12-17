@@ -45,27 +45,41 @@ st.markdown(
 # Streamlit App Title
 st.markdown('<div class="header-text">Enhanced Streamlit App</div>', unsafe_allow_html=True)
 
-# Create two columns for side-by-side buttons
-col1, col2 = st.columns(2)
+# Use session state to track which button was clicked
+if "active_page" not in st.session_state:
+    st.session_state.active_page = "home"
 
-# Button 1 in the first column
-with col1:
-    st.markdown('<div class="section-box">', unsafe_allow_html=True)
-    st.header("Run Code 1")
-    if st.button("Execute Code 1"):
-        st.success("You clicked on 'Execute Code 1'.")
-        # Add Code 1 Functionality Here
-    st.markdown('</div>', unsafe_allow_html=True)
+# Sidebar Navigation
+with st.sidebar:
+    st.title("Navigation")
+    if st.button("Home"):
+        st.session_state.active_page = "home"
+    if st.button("Run Code 1"):
+        st.session_state.active_page = "code1"
+    if st.button("Run Code 2"):
+        st.session_state.active_page = "code2"
 
-# Button 2 in the second column
-with col2:
-    st.markdown('<div class="section-box">', unsafe_allow_html=True)
-    st.header("Run Code 2")
-    if st.button("Execute Code 2"):
-        st.success("You clicked on 'Execute Code 2'.")
-        # Add Code 2 Functionality Here
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# Optional Footer
-st.markdown('<div style="text-align:center; margin-top:50px;">'
-            'Designed with ❤️ using <strong>Streamlit</strong></div>', unsafe_allow_html=True)
+# Display the selected page
+if st.session_state.active_page == "home":
+    # Home Page Content
+    st.markdown(
+        """
+        <div class="section-box">
+            <h2>Welcome to the Enhanced Streamlit App!</h2>
+            <p>Click on the sidebar buttons to run Code 1 or Code 2. Once you choose, the entire page will display the output.</p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+elif st.session_state.active_page == "code1":
+    # Full-Page Content for Code 1
+    st.markdown('<div class="header-text">Running Code 1</div>', unsafe_allow_html=True)
+    st.write("This is where Code 1 will execute.")
+    st.success("You are now viewing the full page for Code 1.")
+    # Add your Code 1 functionality here
+elif st.session_state.active_page == "code2":
+    # Full-Page Content for Code 2
+    st.markdown('<div class="header-text">Running Code 2</div>', unsafe_allow_html=True)
+    st.write("This is where Code 2 will execute.")
+    st.success("You are now viewing the full page for Code 2.")
+    # Add your Code 2 functionality here
