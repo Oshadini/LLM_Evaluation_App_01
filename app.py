@@ -107,9 +107,9 @@ if st.session_state.active_page == "home":
     )
 elif st.session_state.active_page == "code1":
     # Full-Page Content for Code 1
-    st.markdown('<div class="header-text">⚙️ Running Code 1</div>', unsafe_allow_html=True)
-    st.write("This is where Code 1 will execute.")
-    st.success("You are now viewing the full page for Code 1.")
+    #st.markdown('<div class="header-text">⚙️ Running Code 1</div>', unsafe_allow_html=True)
+    #st.write("This is where Code 1 will execute.")
+    #st.success("You are now viewing the full page for Code 1.")
 
 
     import streamlit as st
