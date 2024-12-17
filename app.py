@@ -1,5 +1,8 @@
 import streamlit as st
 
+# Set page config (must be first Streamlit command)
+st.set_page_config(page_title="🚀 Streamlit App", page_icon="🚀", layout="wide")
+
 # Custom CSS for enhanced styling
 st.markdown(
     """
@@ -54,9 +57,6 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
-# Custom browser header (with emoji)
-st.set_page_config(page_title="🚀 Streamlit App", page_icon="🚀")
 
 # Streamlit App Title
 st.markdown('<div class="header-text">🚀 Enhanced Streamlit App</div>', unsafe_allow_html=True)
