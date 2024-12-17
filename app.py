@@ -532,7 +532,7 @@ elif st.session_state.active_page == "code2":
                         )
                     
                         # Add Validation Button
-                        if st.button(f"Validate System Prompt for Metric {i + 1}", key=f"validate_prompt_{i}"):
+                        if st.button(f"Validate Metric {i + 1}", key=f"validate_prompt_{i}"):
                             if len(selected_columns) < 1:
                                 st.error("Please select at least one column to validate against.")
                             else:
@@ -547,7 +547,7 @@ elif st.session_state.active_page == "code2":
     
     
                     # Generate results for each metric
-                    if st.button(f"Generate Results for Metric {i + 1}", key=f"generate_results_{i}"):
+                    if st.button(f"Metric {i + 1} Results", key=f"generate_results_{i}"):
                         if system_prompt.strip() == "":
                             st.error("Please enter a valid system prompt.")
                         elif len(selected_columns) == 1:
@@ -562,7 +562,7 @@ elif st.session_state.active_page == "code2":
                             st.dataframe(pd.DataFrame(results))
     
                 # Combine results for all metrics
-                if num_metrics > 1 and st.button("Generate Overall Results"):
+                if num_metrics > 1 and st.button("Overall Results"):
                     if st.session_state.combined_results:
                         combined_df = pd.DataFrame(st.session_state.combined_results)
                         st.write("Combined Results:")
