@@ -375,7 +375,7 @@ elif st.session_state.active_page == "code2":
     
                 Criteria: [Provide the evaluation of the agent's response here]
                 Supporting Evidence: [Provide supporting evidence for the evaluation here]
-                Tool Triggered: [Identify any tools triggered here]
+                Tool Triggered: [Identify any tools mentioned in agent prompt here]
                 Score: [Provide a numerical or qualitative score here]
                 """
     
