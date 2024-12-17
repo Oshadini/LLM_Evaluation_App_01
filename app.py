@@ -130,6 +130,7 @@ if uploaded_file:
                     else:
                         st.write("Evaluating conversations. Please wait...")
                         results = evaluate_conversation(system_prompt, selected_columns, df, f"Metric {i + 1}")
+                        st.write(results)
                         st.session_state.combined_results.extend(results)
                         st.success(f"Results for Metric {i + 1} generated successfully!")
                         st.dataframe(pd.DataFrame(results))
