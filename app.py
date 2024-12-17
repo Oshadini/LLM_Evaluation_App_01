@@ -1,7 +1,7 @@
 import streamlit as st
 
 # Set page config (must be first Streamlit command)
-st.set_page_config(page_title="🚀 Streamlit App", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="⚙️ LLM Evaluation Tool", layout="wide")
 
 # Custom CSS for enhanced styling
 st.markdown(
@@ -99,8 +99,8 @@ if st.session_state.active_page == "home":
     st.markdown(
         """
         <div class="section-box">
-            <h2>Welcome to the 🚀 Enhanced Streamlit App!</h2>
-            <p>Click on the navigation buttons to run Code 1 or Code 2. Each section will use the full screen for a better experience.</p>
+            <h2>Welcome to the LLM Evaluation Tool</h2>
+            <p>Click on the navigation buttons to run RAG Testing or Agentic CAI Testing.</p>
         </div>
         """,
         unsafe_allow_html=True
