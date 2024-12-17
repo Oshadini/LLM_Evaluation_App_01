@@ -56,13 +56,13 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
             }
 
             for line in response_content.split("\n"):
-                if line.startswith("Criteria:"):
+                if line.startswith("- Criteria:"):
                     parsed_response["Criteria"] = line.replace("Criteria:", "").strip()
-                elif line.startswith("Supporting Evidence:"):
+                elif line.startswith("- Supporting Evidence:"):
                     parsed_response["Supporting Evidence"] = line.replace("Supporting Evidence:", "").strip()
-                elif line.startswith("Tool Triggered:"):
+                elif line.startswith("- Tool Triggered:"):
                     parsed_response["Tool Triggered"] = line.replace("Tool Triggered:", "").strip()
-                elif line.startswith("Score:"):
+                elif line.startswith("- Score:"):
                     parsed_response["Score"] = line.replace("Score:", "").strip()
 
             results.append(parsed_response)
