@@ -16,18 +16,21 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
     for index, row in conversation.iterrows():
         try:
             # Construct the evaluation prompt for GPT-4
-            evaluation_prompt = f"System Prompt: {system_prompt}\n\n"
-            evaluation_prompt += f"Index: {row['Index']}\n"
-            evaluation_prompt += f"User Input: {row['User Input']}\n"
-            evaluation_prompt += f"Agent Prompt: {row['Agent Prompt']}\n"
-            evaluation_prompt += f"Agent Response: {row['Agent Response']}\n\n"
-            evaluation_prompt += (
-                "Provide the following evaluation:\n"
-                "- Criteria: Evaluate the quality of the agent's response.\n"
-                "- Supporting Evidence: Justify your evaluation with evidence from the conversation.\n"
-                "- Tool Triggered: Identify any tools triggered during the response.\n"
-                "- Score: Provide an overall score for the response.\n"
-            )
+            evaluation_prompt = f"""
+            System Prompt: {system_prompt}
+
+            Index: {row['Index']}
+            User Input: {row['User Input']}
+            Agent Prompt: {row['Agent Prompt']}
+            Agent Response: {row['Agent Response']}
+
+            Provide the following evaluation in this exact format:
+
+            Criteria: [Provide the evaluation of the agent's response here]
+            Supporting Evidence: [Provide supporting evidence for the evaluation here]
+            Tool Triggered: [Identify any tools triggered here]
+            Score: [Provide a numerical or qualitative score here]
+            """
 
             # Call GPT-4 API
             completion = openai.chat.completions.create(
@@ -39,9 +42,9 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
             )
 
             response_content = completion.choices[0].message.content.strip()
-            st.write(response_content)
+            st.write("GPT-4 Response:\n", response_content)
 
-            # Parse the response
+            # Validate and parse the response
             parsed_response = {
                 "Index": row["Index"],
                 "Metric": metric_name,
@@ -55,16 +58,25 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
                 "Agent Response": row.get("Agent Response", "")
             }
 
-            for line in response_content.split("\n"):
-                if line.startswith("Criteria:"):
-                    parsed_response["Criteria"] = line.replace("Criteria:", "").strip()
-                elif line.startswith("Supporting Evidence:"):
-                    parsed_response["Supporting Evidence"] = line.replace("Supporting Evidence:", "").strip()
-                elif line.startswith("Tool Triggered:"):
-                    parsed_response["Tool Triggered"] = line.replace("Tool Triggered:", "").strip()
-                elif line.startswith("Score:"):
-                    parsed_response["Score"] = line.replace("Score:", "").strip()
+            # Parse the structured response
+            try:
+                for line in response_content.split("\n"):
+                    line = line.strip()
+                    if line.startswith("Criteria:"):
+                        parsed_response["Criteria"] = line.replace("Criteria:", "").strip()
+                    elif line.startswith("Supporting Evidence:"):
+                        parsed_response["Supporting Evidence"] = line.replace("Supporting Evidence:", "").strip()
+                    elif line.startswith("Tool Triggered:"):
+                        parsed_response["Tool Triggered"] = line.replace("Tool Triggered:", "").strip()
+                    elif line.startswith("Score:"):
+                        parsed_response["Score"] = line.replace("Score:", "").strip()
+            except Exception as e:
+                parsed_response["Criteria"] = "Error"
+                parsed_response["Supporting Evidence"] = f"Error parsing GPT-4 response: {e}"
+                parsed_response["Score"] = "N/A"
+                parsed_response["Tool Triggered"] = "N/A"
 
+            # Append the parsed response
             results.append(parsed_response)
 
         except Exception as e:
@@ -82,6 +94,7 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
             })
 
     return results
+
 
 # Streamlit UI
 st.title("LLM Conversation Evaluation Tool")
