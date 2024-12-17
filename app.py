@@ -32,6 +32,7 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
             )
 
             response_content = completion.choices[0].message.content.strip()
+            st.write(response_content)
 
             # Parse the response
             parsed_response = {
