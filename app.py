@@ -341,8 +341,8 @@ elif st.session_state.active_page == "code1":
 elif st.session_state.active_page == "code2":
     # Full-Page Content for Code 2
     st.markdown('<div class="header-text"> Agentic CAI Testing </div>', unsafe_allow_html=True)
-    st.write("This is where Code 2 will execute.")
-    st.success("You are now viewing the full page for Code 2.")
+    #st.write("This is where Code 2 will execute.")
+    #st.success("You are now viewing the full page for Code 2.")
     # Add your Code 2 functionality here
 
     import streamlit as st
@@ -444,7 +444,7 @@ elif st.session_state.active_page == "code2":
     
     
     # Streamlit UI
-    st.title("LLM Conversation Evaluation Tool")
+    #st.title("LLM Conversation Evaluation Tool")
     st.write("Upload an Excel or CSV file with headers: Index, User Input, Agent Prompt, and Agent Response to evaluate the conversation.")
     
     uploaded_file = st.file_uploader("Upload your file", type=["xlsx", "csv"])
