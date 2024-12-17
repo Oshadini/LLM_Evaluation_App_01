@@ -389,7 +389,7 @@ elif st.session_state.active_page == "code2":
                 )
     
                 response_content = completion.choices[0].message.content.strip()
-                st.write("GPT-4 Response:\n", response_content)
+                #st.write("GPT-4 Response:\n", response_content)
     
                 # Validate and parse the response
                 parsed_response = {
@@ -558,7 +558,7 @@ elif st.session_state.active_page == "code2":
                             results = evaluate_conversation(system_prompt, selected_columns, df, f"Metric {i + 1}")
                             #st.write(results)
                             st.session_state.combined_results.extend(results)
-                            #st.write(f"Results for Metric {i + 1}:")
+                            st.write(f"Results for Metric {i + 1}:")
                             st.dataframe(pd.DataFrame(results))
     
                 # Combine results for all metrics
