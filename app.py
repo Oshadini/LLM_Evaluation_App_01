@@ -1,10 +1,8 @@
 import streamlit as st
 import pandas as pd
-import re
 import openai
 
-# Set OpenAI API keycompl
-
+# Set OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Define function to evaluate conversation using GPT-4
@@ -30,16 +28,15 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
             )
 
             # Call GPT-4 API
-            completion = openai.chat.completions.create(
-                model="gpt-4o",
+            completion = openai.ChatCompletion.create(
+                model="gpt-4",
                 messages=[
                     {"role": "system", "content": "You are an evaluator analyzing agent conversations."},
                     {"role": "user", "content": evaluation_prompt}
                 ]
             )
 
-            response_content = completion.choices[0].message.content.strip()
-            st.write(response_content)
+            response_content = completion.choices[0].message["content"].strip()
 
             # Parse the response
             parsed_response = {
@@ -57,13 +54,13 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
 
             for line in response_content.split("\n"):
                 if line.startswith("- Criteria:"):
-                    parsed_response["Criteria"] = line.replace("Criteria:", "").strip()
+                    parsed_response["Criteria"] = line.replace("- Criteria:", "").strip()
                 elif line.startswith("- Supporting Evidence:"):
-                    parsed_response["Supporting Evidence"] = line.replace("Supporting Evidence:", "").strip()
+                    parsed_response["Supporting Evidence"] = line.replace("- Supporting Evidence:", "").strip()
                 elif line.startswith("- Tool Triggered:"):
-                    parsed_response["Tool Triggered"] = line.replace("Tool Triggered:", "").strip()
+                    parsed_response["Tool Triggered"] = line.replace("- Tool Triggered:", "").strip()
                 elif line.startswith("- Score:"):
-                    parsed_response["Score"] = line.replace("Score:", "").strip()
+                    parsed_response["Score"] = line.replace("- Score:", "").strip()
 
             results.append(parsed_response)
 
@@ -128,41 +125,10 @@ if uploaded_file:
                 )
 
                 # System prompt configuration
-                toggle_prompt = st.checkbox(
-                    f"Automatically generate system prompt for Metric {i + 1}", key=f"toggle_prompt_{i}"
+                system_prompt = st.text_area(
+                    f"Enter the System Prompt for Metric {i + 1}:",
+                    height=200
                 )
-
-                if toggle_prompt:
-                    if len(selected_columns) < 1:
-                        st.error(f"For Metric {i + 1}, please select at least one column.")
-                    else:
-                        if f"metric_{i}" not in st.session_state.system_prompts:
-                            try:
-                                selected_column_names = ", ".join(selected_columns)
-                                completion = openai.chat.completions.create(
-                                    model="gpt-4o",
-                                    messages=[
-                                        {"role": "system", "content": "You are a helpful assistant generating system prompts."},
-                                        {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}."}
-                                    ],
-                                    max_tokens=200
-                                )
-                                system_prompt = completion.choices[0].message.content.strip()
-                                st.wrtite(system_prompt)
-                                st.session_state.system_prompts[f"metric_{i}"] = system_prompt
-                            except Exception as e:
-                                st.error(f"Error generating or processing system prompt: {e}")
-
-                        system_prompt = st.session_state.system_prompts.get(f"metric_{i}", "")
-                        st.text_area(
-                            f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=200
-                        )
-                        st.success(f"System Prompt for Metric {i + 1} is valid.")
-                else:
-                    system_prompt = st.text_area(
-                        f"Enter the System Prompt for Metric {i + 1}:",
-                        height=200
-                    )
 
                 # Generate results for each metric
                 if st.button(f"Generate Results for Metric {i + 1}", key=f"generate_results_{i}"):
@@ -174,7 +140,6 @@ if uploaded_file:
                         st.write("Evaluating conversations. Please wait...")
                         
                         results = evaluate_conversation(system_prompt, selected_columns, df, f"Metric {i + 1}")
-                        st.write(results)
                         st.session_state.combined_results.extend(results)
                         st.write(f"Results for Metric {i + 1}:")
                         st.dataframe(pd.DataFrame(results))
