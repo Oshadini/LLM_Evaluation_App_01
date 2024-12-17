@@ -503,7 +503,7 @@ elif st.session_state.active_page == "code2":
                                         model="gpt-4o",
                                         messages=[
                                             {"role": "system", "content": "You are a helpful assistant generating system prompts."},
-                                            {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}."}
+                                            {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate agentic goal accuracy based on the following columns: {selected_column_names}."}
                                         ],
                                         max_tokens=200
                                     )
