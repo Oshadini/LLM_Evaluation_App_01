@@ -144,7 +144,7 @@ if uploaded_file:
                 toggle_prompt = st.checkbox(
                     f"Automatically generate system prompt for Metric {i + 1}", key=f"toggle_prompt_{i}"
                 )
-                
+
                 if toggle_prompt:
                     if len(selected_columns) < 1:
                         st.error(f"For Metric {i + 1}, please select at least one column.")
@@ -161,41 +161,21 @@ if uploaded_file:
                                     max_tokens=200
                                 )
                                 system_prompt = completion.choices[0].message.content.strip()
+                                st.write(system_prompt)
                                 st.session_state.system_prompts[f"metric_{i}"] = system_prompt
-                
-                                # Automatic Validation
-                                missing_columns = [col for col in selected_columns if col not in system_prompt]
-                                if missing_columns:
-                                    st.warning(f"Validation failed! The system prompt is missing these columns: {', '.join(missing_columns)}.")
-                                else:
-                                    st.success("Validation successful! All selected columns are included in the system prompt.")
-                
                             except Exception as e:
                                 st.error(f"Error generating or processing system prompt: {e}")
-                
+
                         system_prompt = st.session_state.system_prompts.get(f"metric_{i}", "")
                         st.text_area(
                             f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=200
                         )
+                        st.success(f"System Prompt for Metric {i + 1} is valid.")
                 else:
                     system_prompt = st.text_area(
                         f"Enter the System Prompt for Metric {i + 1}:",
                         height=200
                     )
-                
-                    # Add Validation Button
-                    if st.button(f"Validate System Prompt for Metric {i + 1}", key=f"validate_prompt_{i}"):
-                        if len(selected_columns) < 1:
-                            st.error("Please select at least one column to validate against.")
-                        else:
-                            missing_columns = [col for col in selected_columns if col not in system_prompt]
-                            if missing_columns:
-                                st.error(f"Validation failed! The system prompt is missing these columns: {', '.join(missing_columns)}.")
-                            else:
-                                st.success("Validation successful! All selected columns are included in the system prompt.")
-
-
-
 
                 # Generate results for each metric
                 if st.button(f"Generate Results for Metric {i + 1}", key=f"generate_results_{i}"):
