@@ -181,8 +181,8 @@ if uploaded_file:
                 if st.button(f"Generate Results for Metric {i + 1}", key=f"generate_results_{i}"):
                     if system_prompt.strip() == "":
                         st.error("Please enter a valid system prompt.")
-                    elif len(selected_columns) == 0:
-                        st.error("Please select at least one column.")
+                    elif len(selected_columns) == 1:
+                        st.error("Please select minimum two columns.")
                     else:
                         st.write("Evaluating conversations. Please wait...")
                         
