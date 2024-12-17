@@ -511,7 +511,8 @@ elif st.session_state.active_page == "code2":
                                     st.session_state.system_prompts[f"metric_{i}"] = system_prompt
                     
                                     # Automatic Validation
-                                    missing_columns = [col for col in selected_columns if col not in system_prompt]
+                                    system_prompt_lower = system_prompt.lower()
+                                    missing_columns = [col for col in selected_columns if col.lower() not in system_prompt_lower]
                                     if missing_columns:
                                         st.warning(f"Validation failed! The system prompt is missing these columns: {', '.join(missing_columns)}.")
                                     else:
@@ -535,7 +536,8 @@ elif st.session_state.active_page == "code2":
                             if len(selected_columns) < 1:
                                 st.error("Please select at least one column to validate against.")
                             else:
-                                missing_columns = [col for col in selected_columns if col not in system_prompt]
+                                system_prompt_lower = system_prompt.lower()
+                                missing_columns = [col for col in selected_columns if col.lower() not in system_prompt_lower]
                                 if missing_columns:
                                     st.error(f"Validation failed! The system prompt is missing these columns: {', '.join(missing_columns)}.")
                                 else:
