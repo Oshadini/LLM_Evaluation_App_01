@@ -249,7 +249,7 @@ elif st.session_state.active_page == "code1":
                             height=200
                         )
     
-                        valid_prompt = st.button(f"Validate Prompt for Metric {i + 1}", key=f"validate_{i}")
+                        valid_prompt = st.button(f"Validate Metric {i + 1}", key=f"validate_{i}")
     
                         if valid_prompt:
                             selected_column_terms = {
@@ -271,7 +271,7 @@ elif st.session_state.active_page == "code1":
                                 st.success(f"System Prompt for Metric {i + 1} is valid.")
     
                     # Button for generating results for each metric
-                    if st.button(f"Generate Results for Metric {i + 1}", key=f"generate_results_{i}"):
+                    if st.button(f"Results for Metric {i + 1}", key=f"generate_results_{i}"):
                         column_mapping = {
                             "Question": "question",
                             "Context": "formatted_context",
