@@ -67,6 +67,7 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
                 "Tool Triggered": "N/A",
             })
     return results
+    st.write(results)
 
 
 # Streamlit UI
