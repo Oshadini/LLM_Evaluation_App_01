@@ -85,7 +85,7 @@ with st.sidebar:
     # Run Code 1 and Code 2 buttons (Bottom Section)
     code1_col, code2_col = st.columns(2)
     with code1_col:
-        if st.button("⚙️ Run Code 1", key="code1_btn"):
+        if st.button("🛠️ Run Code 1", key="code1_btn"):
             st.session_state.active_page = "code1"
     with code2_col:
         if st.button("🛠️ Run Code 2", key="code2_btn"):
