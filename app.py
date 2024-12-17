@@ -1,8 +1,10 @@
 import streamlit as st
 import pandas as pd
+import re
 import openai
 
-# Set OpenAI API key
+# Set OpenAI API keycompl
+
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Define function to evaluate conversation using GPT-4
@@ -11,19 +13,21 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
     Evaluate the conversation using GPT-4 based on the system prompt provided by the user.
     """
     results = []
-    for _, row in conversation.iterrows():
+    for index, row in conversation.iterrows():
         try:
             # Construct the evaluation prompt for GPT-4
-            evaluation_prompt = f"{system_prompt}\n\n"
-            evaluation_prompt += f"Conversation:\n"
-            evaluation_prompt += f"- User Input: {row['User Input']}\n"
-            evaluation_prompt += f"- Agent Prompt: {row['Agent Prompt']}\n"
-            evaluation_prompt += f"- Agent Response: {row['Agent Response']}\n"
-            evaluation_prompt += "\nProvide the following evaluation:\n"
-            evaluation_prompt += "- Criteria: Evaluate the quality of the agent's response.\n"
-            evaluation_prompt += "- Supporting Evidence: Justify your evaluation with evidence from the conversation.\n"
-            evaluation_prompt += "- Tool Triggered: Identify any tools triggered during the response.\n"
-            evaluation_prompt += "- Score: Provide an overall score for the response (0-10).\n"
+            evaluation_prompt = f"System Prompt: {system_prompt}\n\n"
+            evaluation_prompt += f"Index: {row['Index']}\n"
+            evaluation_prompt += f"User Input: {row['User Input']}\n"
+            evaluation_prompt += f"Agent Prompt: {row['Agent Prompt']}\n"
+            evaluation_prompt += f"Agent Response: {row['Agent Response']}\n\n"
+            evaluation_prompt += (
+                "Provide the following evaluation:\n"
+                "- Criteria: Evaluate the quality of the agent's response.\n"
+                "- Supporting Evidence: Justify your evaluation with evidence from the conversation.\n"
+                "- Tool Triggered: Identify any tools triggered during the response.\n"
+                "- Score: Provide an overall score for the response.\n"
+            )
 
             # Call GPT-4 API
             completion = openai.chat.completions.create(
@@ -34,11 +38,8 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
                 ]
             )
 
-            # Debug the raw response content
             response_content = completion.choices[0].message.content.strip()
-            #response_content2 = completion.choices[1].message.content.strip()
-            #st.write(response_content2)
-            print("DEBUG: Raw GPT-4 Response:\n", response_content)
+            st.write(response_content)
 
             # Parse the response
             parsed_response = {
@@ -54,47 +55,31 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
                 "Agent Response": row.get("Agent Response", "")
             }
 
-            # Extract fields from the response
-            lines = response_content.split("\n")
-            for line in lines:
-                if line.startswith("- Criteria:"):
+            for line in response_content.split("\n"):
+                if line.startswith("Criteria:"):
                     parsed_response["Criteria"] = line.replace("Criteria:", "").strip()
-                elif line.startswith("- Supporting Evidence:"):
+                elif line.startswith("Supporting Evidence:"):
                     parsed_response["Supporting Evidence"] = line.replace("Supporting Evidence:", "").strip()
-                elif line.startswith("- Tool Triggered:"):
+                elif line.startswith("Tool Triggered:"):
                     parsed_response["Tool Triggered"] = line.replace("Tool Triggered:", "").strip()
-                elif line.startswith("- Score:"):
+                elif line.startswith("Score:"):
                     parsed_response["Score"] = line.replace("Score:", "").strip()
-
-            # Debug each field in the parsed response
-            print("DEBUG: Parsed Response Fields:")
-            print("  Index:", parsed_response["Index"])
-            print("  Metric:", parsed_response["Metric"])
-            print("  Selected Columns:", parsed_response["Selected Columns"])
-            print("  Score:", parsed_response["Score"])
-            print("  Criteria:", parsed_response["Criteria"])
-            print("  Supporting Evidence:", parsed_response["Supporting Evidence"])
-            print("  Tool Triggered:", parsed_response["Tool Triggered"])
 
             results.append(parsed_response)
 
         except Exception as e:
-            # Append error details for this row
             results.append({
                 "Index": row["Index"],
                 "Metric": metric_name,
                 "Selected Columns": ", ".join(selected_columns),
-                "Score": "Error",
+                "Score": "N/A",
                 "Criteria": "Error",
                 "Supporting Evidence": f"Error processing conversation: {e}",
-                "Tool Triggered": "Error",
+                "Tool Triggered": "N/A",
                 "User Input": row.get("User Input", ""),
                 "Agent Prompt": row.get("Agent Prompt", ""),
                 "Agent Response": row.get("Agent Response", "")
             })
-
-            # Debugging output for errors
-            print(f"DEBUG: Error processing conversation for Index {row['Index']} ->", e)
 
     return results
 
@@ -163,6 +148,7 @@ if uploaded_file:
                                     max_tokens=200
                                 )
                                 system_prompt = completion.choices[0].message.content.strip()
+                                st.wrtite(system_prompt)
                                 st.session_state.system_prompts[f"metric_{i}"] = system_prompt
                             except Exception as e:
                                 st.error(f"Error generating or processing system prompt: {e}")
@@ -186,7 +172,9 @@ if uploaded_file:
                         st.error("Please select at least one column.")
                     else:
                         st.write("Evaluating conversations. Please wait...")
+                        
                         results = evaluate_conversation(system_prompt, selected_columns, df, f"Metric {i + 1}")
+                        st.write(results)
                         st.session_state.combined_results.extend(results)
                         st.write(f"Results for Metric {i + 1}:")
                         st.dataframe(pd.DataFrame(results))
