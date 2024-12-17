@@ -107,7 +107,7 @@ if st.session_state.active_page == "home":
     )
 elif st.session_state.active_page == "code1":
     # Full-Page Content for Code 1
-    #st.markdown('<div class="header-text">⚙️ Running Code 1</div>', unsafe_allow_html=True)
+    st.markdown('<div class="header-text"> RAG Testing </div>', unsafe_allow_html=True)
     #st.write("This is where Code 1 will execute.")
     #st.success("You are now viewing the full page for Code 1.")
 
@@ -340,7 +340,7 @@ elif st.session_state.active_page == "code1":
     # Add your Code 1 functionality here
 elif st.session_state.active_page == "code2":
     # Full-Page Content for Code 2
-    st.markdown('<div class="header-text">🛠️ Running Code 2</div>', unsafe_allow_html=True)
+    st.markdown('<div class="header-text"> Agentic CAI Testing </div>', unsafe_allow_html=True)
     st.write("This is where Code 2 will execute.")
     st.success("You are now viewing the full page for Code 2.")
     # Add your Code 2 functionality here
