@@ -36,59 +36,67 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
 
             # Debug the raw response content
             response_content = completion.choices[0].message.content.strip()
-            print(f"DEBUG: GPT-4 Response for Index {row['Index']}:\n{response_content}")
+            #response_content2 = completion.choices[1].message.content.strip()
+            #st.write(response_content2)
+            print("DEBUG: Raw GPT-4 Response:\n", response_content)
 
-            # Initialize parsed response with default values
+            # Parse the response
             parsed_response = {
                 "Index": row["Index"],
                 "Metric": metric_name,
                 "Selected Columns": ", ".join(selected_columns),
-                "Score": "N/A",
-                "Criteria": "N/A",
-                "Supporting Evidence": "N/A",
-                "Tool Triggered": "N/A",
+                "Score": "",
+                "Criteria": "",
+                "Supporting Evidence": "",
+                "Tool Triggered": "",
                 "User Input": row.get("User Input", ""),
                 "Agent Prompt": row.get("Agent Prompt", ""),
                 "Agent Response": row.get("Agent Response", "")
             }
 
-            # Extract fields robustly from the response
-            for line in response_content.split("\n"):
-                line = line.strip()  # Remove leading/trailing spaces
-                if "Criteria:" in line:
-                    parsed_response["Criteria"] = line.split("Criteria:", 1)[1].strip()
-                elif "Supporting Evidence:" in line:
-                    parsed_response["Supporting Evidence"] = line.split("Supporting Evidence:", 1)[1].strip()
-                elif "Tool Triggered:" in line:
-                    parsed_response["Tool Triggered"] = line.split("Tool Triggered:", 1)[1].strip()
-                elif "Score:" in line:
-                    parsed_response["Score"] = line.split("Score:", 1)[1].strip()
+            # Extract fields from the response
+            lines = response_content.split("\n")
+            for line in lines:
+                if line.startswith("- Criteria:"):
+                    parsed_response["Criteria"] = line.replace("Criteria:", "").strip()
+                elif line.startswith("- Supporting Evidence:"):
+                    parsed_response["Supporting Evidence"] = line.replace("Supporting Evidence:", "").strip()
+                elif line.startswith("- Tool Triggered:"):
+                    parsed_response["Tool Triggered"] = line.replace("Tool Triggered:", "").strip()
+                elif line.startswith("- Score:"):
+                    parsed_response["Score"] = line.replace("Score:", "").strip()
 
-            # Log the parsed response
-            print(f"DEBUG: Parsed Response for Index {row['Index']}: {parsed_response}")
+            # Debug each field in the parsed response
+            print("DEBUG: Parsed Response Fields:")
+            print("  Index:", parsed_response["Index"])
+            print("  Metric:", parsed_response["Metric"])
+            print("  Selected Columns:", parsed_response["Selected Columns"])
+            print("  Score:", parsed_response["Score"])
+            print("  Criteria:", parsed_response["Criteria"])
+            print("  Supporting Evidence:", parsed_response["Supporting Evidence"])
+            print("  Tool Triggered:", parsed_response["Tool Triggered"])
 
             results.append(parsed_response)
 
         except Exception as e:
             # Append error details for this row
-            error_message = f"Error processing conversation: {e}"
-            print(f"DEBUG: {error_message} for Index {row['Index']}")
-
             results.append({
                 "Index": row["Index"],
                 "Metric": metric_name,
                 "Selected Columns": ", ".join(selected_columns),
                 "Score": "Error",
                 "Criteria": "Error",
-                "Supporting Evidence": error_message,
+                "Supporting Evidence": f"Error processing conversation: {e}",
                 "Tool Triggered": "Error",
                 "User Input": row.get("User Input", ""),
                 "Agent Prompt": row.get("Agent Prompt", ""),
                 "Agent Response": row.get("Agent Response", "")
             })
 
-    return results
+            # Debugging output for errors
+            print(f"DEBUG: Error processing conversation for Index {row['Index']} ->", e)
 
+    return results
 
 # Streamlit UI
 st.title("LLM Conversation Evaluation Tool")
@@ -135,10 +143,40 @@ if uploaded_file:
                 )
 
                 # System prompt configuration
-                system_prompt = st.text_area(
-                    f"Enter the System Prompt for Metric {i + 1}:",
-                    height=200
+                toggle_prompt = st.checkbox(
+                    f"Automatically generate system prompt for Metric {i + 1}", key=f"toggle_prompt_{i}"
                 )
+
+                if toggle_prompt:
+                    if len(selected_columns) < 1:
+                        st.error(f"For Metric {i + 1}, please select at least one column.")
+                    else:
+                        if f"metric_{i}" not in st.session_state.system_prompts:
+                            try:
+                                selected_column_names = ", ".join(selected_columns)
+                                completion = openai.chat.completions.create(
+                                    model="gpt-4o",
+                                    messages=[
+                                        {"role": "system", "content": "You are a helpful assistant generating system prompts."},
+                                        {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate relevance based on the following columns: {selected_column_names}."}
+                                    ],
+                                    max_tokens=200
+                                )
+                                system_prompt = completion.choices[0].message.content.strip()
+                                st.session_state.system_prompts[f"metric_{i}"] = system_prompt
+                            except Exception as e:
+                                st.error(f"Error generating or processing system prompt: {e}")
+
+                        system_prompt = st.session_state.system_prompts.get(f"metric_{i}", "")
+                        st.text_area(
+                            f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=200
+                        )
+                        st.success(f"System Prompt for Metric {i + 1} is valid.")
+                else:
+                    system_prompt = st.text_area(
+                        f"Enter the System Prompt for Metric {i + 1}:",
+                        height=200
+                    )
 
                 # Generate results for each metric
                 if st.button(f"Generate Results for Metric {i + 1}", key=f"generate_results_{i}"):
