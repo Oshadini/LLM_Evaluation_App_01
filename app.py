@@ -1,7 +1,7 @@
 import streamlit as st
 
 # Set page config (must be first Streamlit command)
-st.set_page_config(page_title="⚙️ Streamlit App", layout="wide")
+st.set_page_config(page_title="🚀 Streamlit App", page_icon="🚀", layout="wide")
 
 # Custom CSS for enhanced styling
 st.markdown(
@@ -11,7 +11,7 @@ st.markdown(
         [data-testid="stSidebar"] {
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: space-between;
         }
         .stButton>button {
             border-radius: 8px;
@@ -69,7 +69,20 @@ if "active_page" not in st.session_state:
 with st.sidebar:
     st.title("🧭 Navigation")
 
-    # Home and Exit buttons (Top Section)
+    # Run Code 1 and Code 2 buttons (Top Section)
+    code1_col, code2_col = st.columns(2)
+    with code1_col:
+        if st.button("⚙️ Run Code 1", key="code1_btn"):
+            st.session_state.active_page = "code1"
+    with code2_col:
+        if st.button("🛠️ Run Code 2", key="code2_btn"):
+            st.session_state.active_page = "code2"
+
+    st.write("---")  # Divider to separate sections
+
+    # Home and Exit buttons (Bottom Section)
+    st.write("")  # Spacer
+    st.write("")  # Spacer
     st.write("")  # Spacer
     st.write("")  # Spacer
     home_col, exit_col = st.columns(2)
@@ -79,17 +92,6 @@ with st.sidebar:
     with exit_col:
         if st.button("🚪 Exit", key="exit_btn"):
             st.session_state.active_page = "exit"
-
-    st.write("---")  # Divider
-
-    # Run Code 1 and Code 2 buttons (Bottom Section)
-    code1_col, code2_col = st.columns(2)
-    with code1_col:
-        if st.button("🛠️ Run Code 1", key="code1_btn"):
-            st.session_state.active_page = "code1"
-    with code2_col:
-        if st.button("🛠️ Run Code 2", key="code2_btn"):
-            st.session_state.active_page = "code2"
 
 # Display the selected page
 if st.session_state.active_page == "home":
@@ -105,7 +107,7 @@ if st.session_state.active_page == "home":
     )
 elif st.session_state.active_page == "code1":
     # Full-Page Content for Code 1
-    st.markdown('<div class="header-text">🛠️ Running Code 1</div>', unsafe_allow_html=True)
+    st.markdown('<div class="header-text">⚙️ Running Code 1</div>', unsafe_allow_html=True)
     st.write("This is where Code 1 will execute.")
     st.success("You are now viewing the full page for Code 1.")
     # Add your Code 1 functionality here
