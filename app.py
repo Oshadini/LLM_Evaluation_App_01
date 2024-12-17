@@ -109,7 +109,7 @@ if uploaded_file:
 
                 # System prompt configuration
                 system_prompt = st.text_area(
-                    f"Enter System Prompt for Metric {i + 1} (or auto-generate below):",
+                    f"Enter System Prompt for Metric {i + 1}:",
                     height=150,
                     key=f"system_prompt_{i}"
                 )
@@ -118,7 +118,7 @@ if uploaded_file:
                     if not system_prompt or not selected_columns:
                         st.error("Please enter a system prompt and select at least one column.")
                     else:
-                        st.info("Evaluating conversations... This may take a while.")
+                        st.info("Evaluating all records... This may take a while.")
                         results = evaluate_conversation(system_prompt, selected_columns, df, f"Metric {i + 1}")
                         st.session_state.combined_results.extend(results)
 
@@ -127,21 +127,17 @@ if uploaded_file:
                         metric_df = pd.DataFrame(results)
                         st.dataframe(metric_df)
 
-            # Combine and display results
-            if st.button("Generate Overall Results"):
-                if st.session_state.combined_results:
-                    combined_df = pd.DataFrame(st.session_state.combined_results)
-                    st.write("### Combined Results")
-                    st.dataframe(combined_df)
+            # Combine and display all results
+            if st.session_state.combined_results:
+                st.write("## Combined Results for All Metrics")
+                combined_df = pd.DataFrame(st.session_state.combined_results)
+                st.dataframe(combined_df)
 
-                    st.download_button(
-                        label="Download Combined Results as CSV",
-                        data=combined_df.to_csv(index=False),
-                        file_name="combined_evaluation_results.csv",
-                        mime="text/csv"
-                    )
-                else:
-                    st.warning("No results to display. Please evaluate at least one metric.")
-
+                st.download_button(
+                    label="Download Combined Results as CSV",
+                    data=combined_df.to_csv(index=False),
+                    file_name="combined_evaluation_results.csv",
+                    mime="text/csv"
+                )
     except Exception as e:
         st.error(f"An error occurred: {e}")
