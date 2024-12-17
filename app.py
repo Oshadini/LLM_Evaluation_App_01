@@ -110,10 +110,10 @@ if uploaded_file:
                                 completion = openai.chat.completions.create(
                                     model="gpt-4",  # Correct model name
                                     messages=[
-                                        {"role": "system", "content": "You are a helpful assistant generating system prompts."},
                                         {"role": "user", "content": (
                                             f"Generate a system prompt less than 200 tokens to evaluate {evaluation_type.lower()} "
-                                            f"based on the following columns: {selected_column_names}."
+                                            f"based on the following columns: {selected_column_names}. "
+                                            f"Please provide a rating from 1 (not at all {evaluation_type.lower()}) to 10 (highly {evaluation_type.lower()})."
                                         )}
                                     ],
                                     max_tokens=200
