@@ -211,14 +211,14 @@ if uploaded_file:
             else:
                 st.write("Preview of Uploaded Data:")
                 st.dataframe(df.head())
-        
+
                 num_metrics = st.number_input("Enter the number of metrics you want to define:", min_value=1, step=1)
-        
+    
                 if "system_prompts" not in st.session_state:
                     st.session_state.system_prompts = {}
                 if "combined_results" not in st.session_state:
                     st.session_state.combined_results = []
-        
+    
                 for i in range(num_metrics):
                     st.markdown(f"""
                         <hr style="border: 5px solid #000000;">
@@ -226,111 +226,137 @@ if uploaded_file:
                             Metric {i + 1}
                         </h3>
                     """, unsafe_allow_html=True)
-        
-                    # Column selection for agentic testing
+    
+                    # Column selection remains unchanged
                     selected_columns = st.multiselect(
                         f"Select columns for Metric {i + 1}:",
-                        options=required_columns[1:],
-                        key=f"columns_agentic_{i}"
+                        options=required_columns[1:],  # Skip the Index column
+                        key=f"columns_{i}"
                     )
-        
+    
+                    # System prompt configuration
                     system_prompt = st.text_area(
                         f"Enter the System Prompt for Metric {i + 1}:",
                         height=200
                     )
-        
+    
+                    # Generate results for each metric
                     if st.button(f"Metric {i + 1} Results", key=f"generate_results_{i}"):
                         if system_prompt.strip() == "":
                             st.error("Please enter a valid system prompt.")
-                        elif len(selected_columns) < 1:
-                            st.error(f"For Metric {i + 1}, please select at least one column.")
                         else:
-                            results = []
-                            for index, row in df.iterrows():
-                                try:
-                                    # Ensure only selected columns are passed for evaluation
-                                    evaluation_data = {col: row[col] for col in selected_columns}
-        
-                                    # Dynamically adjust the prompt length for token limits
-                                    max_token_length = 40000  # Adjustable for the model's capacity
-                                    base_prompt = f"""
-                                    System Prompt: {system_prompt}
-        
-                                    Index: {row['Index']}
-                                    {', '.join([f"{col}: {evaluation_data[col]}" for col in selected_columns])}
-        
-                                    Evaluate the entire conversation for Agent-Goal Accuracy. Use the following format:
-        
-                                    Criteria: [Explain how well the Agent responded to the User's input and fulfilled their goals]
-                                    Supporting Evidence: [Highlight specific faulty or insufficient responses from the Agent]
-                                    Score: [Provide a numerical or qualitative score here]
-                                    """
-                                    truncated_prompt = base_prompt[:max_token_length]
-        
-                                    # Generate completion
-                                    completion = openai.chat.completions.create(
-                                        model="gpt-4o",
-                                        messages=[
-                                            {"role": "system", "content": "You are an evaluator analyzing agent conversations."},
-                                            {"role": "user", "content": truncated_prompt}
-                                        ]
-                                    )
-        
-                                    response_content = completion.choices[0].message.content.strip()
-                                    response_parts = response_content.split("\n")
-        
-                                    # Initialize parsed response
-                                    parsed_response = {
-                                        "Index": row["Index"],
-                                        "Metric": f"Metric {i + 1}",
-                                        "Selected Columns": ", ".join(selected_columns),
-                                        "Score": "",
-                                        "Criteria": "",
-                                        "Supporting Evidence": "",
-                                        "Conversation": row.get("Conversation", "")
-                                    }
-        
-                                    # Parse response into structured fields
-                                    for part in response_parts:
-                                        if part.startswith("Criteria:"):
-                                            parsed_response["Criteria"] = part.split("Criteria:", 1)[-1].strip()
-                                        elif part.startswith("Supporting Evidence:"):
-                                            parsed_response["Supporting Evidence"] = part.split("Supporting Evidence:", 1)[-1].strip()
-                                        elif part.startswith("Score:"):
-                                            parsed_response["Score"] = part.split("Score:", 1)[-1].strip()
-        
-                                    # Handle missing fields by retrying or assigning default error messages
-                                    if not parsed_response["Criteria"]:
-                                        parsed_response["Criteria"] = (
-                                            "Criteria could not be generated from the provided system prompt. "
-                                            "Ensure the prompt explicitly demands this information."
-                                        )
-                                    if not parsed_response["Supporting Evidence"]:
-                                        parsed_response["Supporting Evidence"] = (
-                                            "Supporting evidence could not be extracted. Verify that the system prompt "
-                                            "includes detailed context for generating this field."
-                                        )
-                                    if not parsed_response["Score"]:
-                                        parsed_response["Score"] = "Score could not be determined."
-        
-                                    results.append(parsed_response)
-                                except Exception as e:
-                                    st.error(f"Error evaluating row {index + 1}: {e}")
-        
+                            st.write("Evaluating conversations. Please wait...")
+    
+                            results = evaluate_conversation(system_prompt, selected_columns, df, f"Metric {i + 1}")
                             st.session_state.combined_results.extend(results)
                             st.write(f"Results for Metric {i + 1}:")
                             st.dataframe(pd.DataFrame(results))
-
-
+    
+                # Combine results for all metrics
                 if num_metrics > 1 and st.button("Overall Results"):
                     if st.session_state.combined_results:
+                        combined_df = pd.DataFrame(st.session_state.combined_results)
                         st.write("Combined Results:")
-                        st.dataframe(pd.DataFrame(st.session_state.combined_results))
+                        st.dataframe(combined_df)
+                        st.download_button(
+                            label="Download Combined Results as CSV",
+                            data=combined_df.to_csv(index=False),
+                            file_name="combined_evaluation_results.csv",
+                            mime="text/csv"
+                        )
                     else:
                         st.warning("No results to combine. Please generate results for individual metrics first.")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
 
-        else:
-            st.error("The uploaded file format is not recognized. Please ensure it matches one of the expected formats.")
-
-    except Exception as e:
-        st.error(f"Error processing the uploaded file: {e}")
+            MAX_PROMPT_LENGTH = 1500  # Define maximum allowable characters for the system prompt
+            
+            def truncate_prompt(prompt: str, max_length: int = MAX_PROMPT_LENGTH) -> str:
+                """
+                Truncate the prompt to fit within the allowed maximum length.
+                """
+                if len(prompt) > max_length:
+                    return prompt[:max_length] + "..."
+                return prompt
+            
+            # Define function to evaluate conversation using GPT-4
+            def evaluate_conversation(system_prompt: str, selected_columns: list, conversation: pd.DataFrame, metric_name: str) -> list:
+                """
+                Evaluate the conversation using GPT-4 based on the system prompt provided by the user.
+                """
+                results = []
+                
+                # Truncate the system prompt if it's too long
+                if len(system_prompt) > MAX_PROMPT_LENGTH:
+                    st.warning(f"The system prompt exceeds {MAX_PROMPT_LENGTH} characters and will be truncated.")
+                    system_prompt = truncate_prompt(system_prompt)
+                
+                for index, row in conversation.iterrows():
+                    try:
+                        # Construct the evaluation prompt for GPT-4
+                        evaluation_prompt = f"""
+                        System Prompt: {system_prompt}
+            
+                        Index: {row['Index']}
+                        Conversation: {row['Conversation']}
+                        Agent Prompt: {row['Agent Prompt']}
+            
+                        Evaluate the entire conversation for Agent-Goal Accuracy. Use the following format:
+                        
+                        Criteria: [Explain how well the Agent responded to the User's input and fulfilled their goals]
+                        Supporting Evidence: [Highlight specific faulty or insufficient responses from the Agent]
+                        Score: [Provide a numerical or qualitative score here]
+                        """
+            
+                        # Call GPT-4 API
+                        completion = openai.chat.completions.create(
+                            model="gpt-4",
+                            messages=[
+                                {"role": "system", "content": "You are an evaluator analyzing agent conversations."},
+                                {"role": "user", "content": evaluation_prompt}
+                            ]
+                        )
+            
+                        response_content = completion.choices[0].message.content.strip()
+            
+                        # Parse GPT-4 response into structured format
+                        parsed_response = {
+                            "Index": row["Index"],
+                            "Metric": metric_name,
+                            "Selected Columns": ", ".join(selected_columns),
+                            "Score": "",
+                            "Criteria": "",
+                            "Supporting Evidence": "",
+                            "Agent Prompt": row.get("Agent Prompt", ""),
+                            "Conversation": row.get("Conversation", "")
+                        }
+            
+                        # Extract values for Criteria, Supporting Evidence, and Score
+                        for line in response_content.split("\n"):
+                            line = line.strip()
+                            if line.startswith("Criteria:"):
+                                parsed_response["Criteria"] = line.replace("Criteria:", "").strip()
+                            elif line.startswith("Supporting Evidence:"):
+                                parsed_response["Supporting Evidence"] = line.replace("Supporting Evidence:", "").strip()
+                            elif line.startswith("Score:"):
+                                parsed_response["Score"] = line.replace("Score:", "").strip()
+            
+                        # Validate extracted structure
+                        if not (parsed_response["Criteria"] and parsed_response["Supporting Evidence"] and parsed_response["Score"]):
+                            raise ValueError("Response does not contain the required structured fields.")
+            
+                        results.append(parsed_response)
+            
+                    except Exception as e:
+                        results.append({
+                            "Index": row["Index"],
+                            "Metric": metric_name,
+                            "Selected Columns": ", ".join(selected_columns),
+                            "Score": "N/A",
+                            "Criteria": "Error",
+                            "Supporting Evidence": f"Error processing conversation: {e}",
+                            "Agent Prompt": row.get("Agent Prompt", ""),
+                            "Conversation": row.get("Conversation", "")
+                        })
+            
+                return results
