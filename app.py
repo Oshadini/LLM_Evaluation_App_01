@@ -5,12 +5,28 @@ import openai
 # Set OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
+MAX_PROMPT_LENGTH = 1500  # Define a maximum length for the system prompt in tokens/characters
+
+def validate_prompt_length(prompt: str):
+    """
+    Validate the length of the system prompt. If it exceeds the allowed limit, truncate it and return a warning.
+    """
+    if len(prompt) > MAX_PROMPT_LENGTH:
+        truncated_prompt = prompt[:MAX_PROMPT_LENGTH]
+        return truncated_prompt, True
+    return prompt, False
+
 # Define function to evaluate conversation using GPT-4
 def evaluate_conversation(system_prompt: str, selected_columns: list, conversation: pd.DataFrame, metric_name: str) -> list:
     """
     Evaluate the conversation using GPT-4 based on the system prompt provided by the user.
     """
     results = []
+    system_prompt, was_truncated = validate_prompt_length(system_prompt)
+
+    if was_truncated:
+        st.warning("The system prompt was too long and has been truncated to fit within the limit. Please revise it for better results.")
+
     for index, row in conversation.iterrows():
         try:
             # Construct the evaluation prompt for GPT-4
@@ -30,7 +46,7 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
 
             # Call GPT-4 API
             completion = openai.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4",
                 messages=[
                     {"role": "system", "content": "You are an evaluator analyzing agent conversations."},
                     {"role": "user", "content": evaluation_prompt}
@@ -124,9 +140,7 @@ if uploaded_file:
                 )
 
                 # System prompt configuration
-                system_prompt = "Evaluation of conversation and agent prompt"
-                # System prompt configuration
-                system_prompt2 = st.text_area(
+                system_prompt = st.text_area(
                     f"Enter the System Prompt for Metric {i + 1}:",
                     height=200
                 )
