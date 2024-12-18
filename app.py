@@ -15,18 +15,18 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
         try:
             # Construct the evaluation prompt for GPT-4
             evaluation_prompt = f"""
-            System Prompt: {system_prompt}
+            #System Prompt: {system_prompt}
 
             Index: {row['Index']}
             Conversation: {row['Conversation']}
             Agent Prompt: {row['Agent Prompt']}
 
-            #Evaluate the entire conversation for Agent-Goal Accuracy. Use the following format:
-            Evaluate the entire conversation for Agent-Goal Accuracy. Use the format given in System Prompt.
+            Evaluate the entire conversation for Agent-Goal Accuracy. Use the following format:
+            #Evaluate the entire conversation for Agent-Goal Accuracy. Use the format given in System Prompt.
 
-            #Criteria: [Explain how well the Agent responded to the User's input and fulfilled their goals]
-            #Supporting Evidence: [Highlight specific faulty or insufficient responses from the Agent]
-            #Score: [Provide a numerical or qualitative score here]
+            Criteria: [Explain how well the Agent responded to the User's input and fulfilled their goals]
+            Supporting Evidence: [Highlight specific faulty or insufficient responses from the Agent]
+            Score: [Provide a numerical or qualitative score here]
             """
 
             # Call GPT-4 API
