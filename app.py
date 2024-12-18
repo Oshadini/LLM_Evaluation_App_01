@@ -124,9 +124,10 @@ if uploaded_file:
                 )
 
                 # System prompt configuration
-                system_prompt = st.text_area(
-                    f"Enter the System Prompt for Metric {i + 1}:",
-                    height=200
+                system_prompt = "Evaluation of conversation and agent prompt"
+                system_prompt2 = st.text_area(
+                    "f"Enter the System Prompt for Metric {i + 1}:",
+                    "height=200
                 )
 
                 # Generate results for each metric
