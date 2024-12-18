@@ -29,8 +29,8 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
             """
 
             # Call GPT-4 API
-            completion = openai.ChatCompletion.create(
-                model="gpt-4",
+            completion = openai.chat.completions.create(
+                model="gpt-4o",
                 messages=[
                     {"role": "system", "content": "You are an evaluator analyzing agent conversations."},
                     {"role": "user", "content": evaluation_prompt}
@@ -136,8 +136,8 @@ if uploaded_file:
                         if f"metric_{i}" not in st.session_state.system_prompts:
                             try:
                                 selected_column_names = ", ".join(selected_columns)
-                                completion = openai.ChatCompletion.create(
-                                    model="gpt-4",
+                                completion = openai.openai.chat.completions.create(
+                                    model="gpt-4o",
                                     messages=[
                                         {"role": "system", "content": "You are a helpful assistant generating system prompts."},
                                         {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate Agent-Goal Accuracy based on the following columns: {selected_column_names}."}
