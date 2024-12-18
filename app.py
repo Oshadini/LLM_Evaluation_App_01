@@ -306,58 +306,58 @@ if uploaded_file:
 
                 num_metrics = st.number_input("Enter the number of metrics you want to define:", min_value=1, step=1)
         
-                    if "system_prompts" not in st.session_state:
-                        st.session_state.system_prompts = {}
-                    if "combined_results" not in st.session_state:
-                        st.session_state.combined_results = []
-        
-                    for i in range(num_metrics):
-                        st.markdown(f"""
-                            <hr style="border: 5px solid #000000;">
-                            <h3 style="background-color: #f0f0f0; padding: 10px; border: 2px solid #000000;">
-                                Metric {i + 1}
-                            </h3>
-                        """, unsafe_allow_html=True)
-        
-                        # Column selection remains unchanged
-                        selected_columns = st.multiselect(
-                            f"Select columns for Metric {i + 1}:",
-                            options=required_columns[1:],  # Skip the Index column
-                            key=f"columns_{i}"
-                        )
-        
-                        # System prompt configuration
-                        system_prompt = st.text_area(
-                            f"Enter the System Prompt for Metric {i + 1}:",
-                            height=200
-                        )
-        
-                        # Generate results for each metric
-                        if st.button(f"Metric {i + 1} Results", key=f"generate_results_{i}"):
-                            if system_prompt.strip() == "":
-                                st.error("Please enter a valid system prompt.")
-                            else:
-                                st.write("Evaluating conversations. Please wait...")
-        
-                                results = evaluate_conversation(system_prompt, selected_columns, df, f"Metric {i + 1}")
-                                st.session_state.combined_results.extend(results)
-                                st.write(f"Results for Metric {i + 1}:")
-                                st.dataframe(pd.DataFrame(results))
-        
-                    # Combine results for all metrics
-                    if num_metrics > 1 and st.button("Overall Results"):
-                        if st.session_state.combined_results:
-                            combined_df = pd.DataFrame(st.session_state.combined_results)
-                            st.write("Combined Results:")
-                            st.dataframe(combined_df)
-                            st.download_button(
-                                label="Download Combined Results as CSV",
-                                data=combined_df.to_csv(index=False),
-                                file_name="combined_evaluation_results.csv",
-                                mime="text/csv"
-                            )
+                if "system_prompts" not in st.session_state:
+                    st.session_state.system_prompts = {}
+                if "combined_results" not in st.session_state:
+                    st.session_state.combined_results = []
+    
+                for i in range(num_metrics):
+                    st.markdown(f"""
+                        <hr style="border: 5px solid #000000;">
+                        <h3 style="background-color: #f0f0f0; padding: 10px; border: 2px solid #000000;">
+                            Metric {i + 1}
+                        </h3>
+                    """, unsafe_allow_html=True)
+    
+                    # Column selection remains unchanged
+                    selected_columns = st.multiselect(
+                        f"Select columns for Metric {i + 1}:",
+                        options=required_columns[1:],  # Skip the Index column
+                        key=f"columns_{i}"
+                    )
+    
+                    # System prompt configuration
+                    system_prompt = st.text_area(
+                        f"Enter the System Prompt for Metric {i + 1}:",
+                        height=200
+                    )
+    
+                    # Generate results for each metric
+                    if st.button(f"Metric {i + 1} Results", key=f"generate_results_{i}"):
+                        if system_prompt.strip() == "":
+                            st.error("Please enter a valid system prompt.")
                         else:
-                            st.warning("No results to combine. Please generate results for individual metrics first.")
-       
+                            st.write("Evaluating conversations. Please wait...")
+    
+                            results = evaluate_conversation(system_prompt, selected_columns, df, f"Metric {i + 1}")
+                            st.session_state.combined_results.extend(results)
+                            st.write(f"Results for Metric {i + 1}:")
+                            st.dataframe(pd.DataFrame(results))
+    
+                # Combine results for all metrics
+                if num_metrics > 1 and st.button("Overall Results"):
+                    if st.session_state.combined_results:
+                        combined_df = pd.DataFrame(st.session_state.combined_results)
+                        st.write("Combined Results:")
+                        st.dataframe(combined_df)
+                        st.download_button(
+                            label="Download Combined Results as CSV",
+                            data=combined_df.to_csv(index=False),
+                            file_name="combined_evaluation_results.csv",
+                            mime="text/csv"
+                        )
+                    else:
+                        st.warning("No results to combine. Please generate results for individual metrics first.")
+   
 
-           
+       
