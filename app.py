@@ -6,7 +6,7 @@ import openai
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Define function to evaluate conversation using GPT-4
-def evaluate_conversation(system_prompt: str, conversation: pd.DataFrame, metric_name: str) -> list:
+def evaluate_conversation(system_prompt: str, selected_columns: list, conversation: pd.DataFrame, metric_name: str) -> list:
     """
     Evaluate the conversation using GPT-4 based on the system prompt provided by the user.
     """
@@ -43,6 +43,7 @@ def evaluate_conversation(system_prompt: str, conversation: pd.DataFrame, metric
             parsed_response = {
                 "Index": row["Index"],
                 "Metric": metric_name,
+                "Selected Columns": ", ".join(selected_columns),
                 "Score": "",
                 "Criteria": "",
                 "Supporting Evidence": "",
@@ -70,6 +71,7 @@ def evaluate_conversation(system_prompt: str, conversation: pd.DataFrame, metric
             results.append({
                 "Index": row["Index"],
                 "Metric": metric_name,
+                "Selected Columns": ", ".join(selected_columns),
                 "Score": "N/A",
                 "Criteria": "Error",
                 "Supporting Evidence": f"Error processing conversation: {e}",
@@ -114,26 +116,78 @@ if uploaded_file:
                     </h3>
                 """, unsafe_allow_html=True)
 
-                system_prompt = st.text_area(
-                    f"Enter the System Prompt for Metric {i + 1}:",
-                    height=200
+                # Column selection remains unchanged
+                selected_columns = st.multiselect(
+                    f"Select columns for Metric {i + 1}:",
+                    options=required_columns[1:],  # Skip the Index column
+                    key=f"columns_{i}"
                 )
 
-                # Validate System Prompt
-                if st.button(f"Validate Metric {i + 1}", key=f"validate_prompt_{i}"):
-                    if system_prompt.strip() == "":
-                        st.error("Please enter a valid system prompt.")
+                # System prompt configuration
+                toggle_prompt = st.checkbox(
+                    f"Automatically generate system prompt for Metric {i + 1}", key=f"toggle_prompt_{i}"
+                )
+
+                if toggle_prompt:
+                    if len(selected_columns) < 1:
+                        st.error(f"For Metric {i + 1}, please select at least one column.")
                     else:
-                        st.success("System prompt validation successful.")
+                        if f"metric_{i}" not in st.session_state.system_prompts:
+                            try:
+                                selected_column_names = ", ".join(selected_columns)
+                                completion = openai.ChatCompletion.create(
+                                    model="gpt-4",
+                                    messages=[
+                                        {"role": "system", "content": "You are a helpful assistant generating system prompts."},
+                                        {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate Agent-Goal Accuracy based on the following columns: {selected_column_names}."}
+                                    ],
+                                    max_tokens=200
+                                )
+                                system_prompt = completion.choices[0].message.content.strip()
+                                st.session_state.system_prompts[f"metric_{i}"] = system_prompt
+
+                                system_prompt_lower = system_prompt.lower()
+                                missing_columns = [col for col in selected_columns if col.lower() not in system_prompt_lower]
+                                if missing_columns:
+                                    st.warning(f"Validation failed! The system prompt is missing these columns: {', '.join(missing_columns)}.")
+                                else:
+                                    st.success("Validation successful! All selected columns are included in the system prompt.")
+
+                            except Exception as e:
+                                st.error(f"Error generating or processing system prompt: {e}")
+
+                        system_prompt = st.session_state.system_prompts.get(f"metric_{i}", "")
+                        st.text_area(
+                            f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=200
+                        )
+                else:
+                    system_prompt = st.text_area(
+                        f"Enter the System Prompt for Metric {i + 1}:",
+                        height=200
+                    )
+
+                    # Add Validation Button
+                    if st.button(f"Validate Metric {i + 1}", key=f"validate_prompt_{i}"):
+                        if len(selected_columns) < 1:
+                            st.error("Please select at least one column to validate against.")
+                        else:
+                            system_prompt_lower = system_prompt.lower()
+                            missing_columns = [col for col in selected_columns if col.lower() not in system_prompt_lower]
+                            if missing_columns:
+                                st.error(f"Validation failed! The system prompt is missing these columns: {', '.join(missing_columns)}.")
+                            else:
+                                st.success("Validation successful! All selected columns are included in the system prompt.")
 
                 # Generate results for each metric
                 if st.button(f"Metric {i + 1} Results", key=f"generate_results_{i}"):
                     if system_prompt.strip() == "":
                         st.error("Please enter a valid system prompt.")
+                    elif len(selected_columns) == 1:
+                        st.error("Please select minimum two columns.")
                     else:
                         st.write("Evaluating conversations. Please wait...")
 
-                        results = evaluate_conversation(system_prompt, df, f"Metric {i + 1}")
+                        results = evaluate_conversation(system_prompt, selected_columns, df, f"Metric {i + 1}")
                         st.session_state.combined_results.extend(results)
                         st.write(f"Results for Metric {i + 1}:")
                         st.dataframe(pd.DataFrame(results))
