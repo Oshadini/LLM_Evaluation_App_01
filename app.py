@@ -114,13 +114,13 @@ if uploaded_file:
 
                                     completion = openai.chat.completions.create(
                                         model="gpt-4o",
-                                        messages=[
-                                            {"role": "user", "content": (
+                                        messages=[{
+                                            "role": "user", "content": (
                                                 f"Generate a system prompt less than 200 tokens to evaluate {evaluation_type.lower()} "
                                                 f"based on the following columns: {selected_column_names}. "
                                                 f"Please provide a rating from 1 (not at all {evaluation_type.lower()}) to 10 (highly {evaluation_type.lower()})."
-                                            )}
-                                        ],
+                                            )
+                                        }],
                                         max_tokens=200
                                     )
                                     system_prompt = completion.choices[0].message.content.strip()
@@ -310,7 +310,7 @@ if uploaded_file:
                     st.session_state.system_prompts = {}
                 if "combined_results" not in st.session_state:
                     st.session_state.combined_results = []
-    
+
                 for i in range(num_metrics):
                     st.markdown(f"""
                         <hr style="border: 5px solid #000000;">
@@ -318,32 +318,32 @@ if uploaded_file:
                             Metric {i + 1}
                         </h3>
                     """, unsafe_allow_html=True)
-    
+
                     # Column selection remains unchanged
                     selected_columns = st.multiselect(
                         f"Select columns for Metric {i + 1}:",
                         options=required_columns[1:],  # Skip the Index column
                         key=f"columns_{i}"
                     )
-    
+
                     # System prompt configuration
                     system_prompt = st.text_area(
                         f"Enter the System Prompt for Metric {i + 1}:",
                         height=200
                     )
-    
+
                     # Generate results for each metric
                     if st.button(f"Metric {i + 1} Results", key=f"generate_results_{i}"):
                         if system_prompt.strip() == "":
                             st.error("Please enter a valid system prompt.")
                         else:
                             st.write("Evaluating conversations. Please wait...")
-    
+
                             results = evaluate_conversation(system_prompt, selected_columns, df, f"Metric {i + 1}")
                             st.session_state.combined_results.extend(results)
                             st.write(f"Results for Metric {i + 1}:")
                             st.dataframe(pd.DataFrame(results))
-    
+
                 # Combine results for all metrics
                 if num_metrics > 1 and st.button("Overall Results"):
                     if st.session_state.combined_results:
@@ -358,6 +358,3 @@ if uploaded_file:
                         )
                     else:
                         st.warning("No results to combine. Please generate results for individual metrics first.")
-   
-
-       
