@@ -253,8 +253,8 @@ if uploaded_file:
                                     """
         
                                     # Generate completion
-                                    completion = openai.ChatCompletion.create(
-                                        model="gpt-4",
+                                    completion = openai.chat.completions.create(
+                                        model="gpt-4o",
                                         messages=[
                                             {"role": "system", "content": "You are an evaluator analyzing agent conversations."},
                                             {"role": "user", "content": evaluation_prompt}
