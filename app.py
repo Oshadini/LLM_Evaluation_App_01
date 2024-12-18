@@ -355,7 +355,8 @@ if uploaded_file:
                             st.warning("No results to combine. Please generate results for individual metrics first.")
                     except Exception as e:
                         st.error(f"Error displaying combined results: {e}")
-    
-     except Exception as e:
-         st.error(f"Error displaying combined results: {e}")
+                        
+
+    except Exception as e:
+        st.error(f"Error displaying combined results: {e}")
 
