@@ -186,7 +186,7 @@ if uploaded_file:
         #elif "Conversation" in df.columns and "Agent Prompt" in df.columns:
             # Code 2 processing
 
-        # Edited section: Agentic Testing (Code 2 processing)
+        # Agentic Testing (Code 2 processing with edits)
         elif "Conversation" in df.columns and "Agent Prompt" in df.columns:
             # Code 2 processing
             required_columns = ["Index", "Conversation", "Agent Prompt"]
@@ -211,6 +211,13 @@ if uploaded_file:
                         </h3>
                     """, unsafe_allow_html=True)
         
+                    # Column selection for agentic testing
+                    selected_columns = st.multiselect(
+                        f"Select columns for Metric {i + 1}:",
+                        options=required_columns[1:],
+                        key=f"columns_agentic_{i}"
+                    )
+        
                     system_prompt = st.text_area(
                         f"Enter the System Prompt for Metric {i + 1}:",
                         height=200
@@ -219,20 +226,24 @@ if uploaded_file:
                     if st.button(f"Metric {i + 1} Results", key=f"generate_results_{i}"):
                         if system_prompt.strip() == "":
                             st.error("Please enter a valid system prompt.")
+                        elif len(selected_columns) < 1:
+                            st.error(f"For Metric {i + 1}, please select at least one column.")
                         else:
                             results = []
                             for index, row in df.iterrows():
                                 try:
-                                    # Chunk system prompt if it exceeds a safe length
-                                    max_prompt_length = 4000  # Adjustable depending on the model's token limit
+                                    # Ensure only selected columns are passed for evaluation
+                                    evaluation_data = {col: row[col] for col in selected_columns}
+        
+                                    # Truncate lengthy system prompt
+                                    max_prompt_length = 4000  # Adjustable depending on model's token limit
                                     truncated_system_prompt = system_prompt[:max_prompt_length]
         
                                     evaluation_prompt = f"""
                                     System Prompt: {truncated_system_prompt}
         
                                     Index: {row['Index']}
-                                    Conversation: {row['Conversation']}
-                                    Agent Prompt: {row['Agent Prompt']}
+                                    {', '.join([f"{col}: {evaluation_data[col]}" for col in selected_columns])}
         
                                     Evaluate the entire conversation for Agent-Goal Accuracy. Use the following format:
                                     
@@ -242,8 +253,8 @@ if uploaded_file:
                                     """
         
                                     # Generate completion
-                                    completion = openai.chat.completions.create(
-                                        model="gpt-4o",
+                                    completion = openai.ChatCompletion.create(
+                                        model="gpt-4",
                                         messages=[
                                             {"role": "system", "content": "You are an evaluator analyzing agent conversations."},
                                             {"role": "user", "content": evaluation_prompt}
@@ -253,18 +264,18 @@ if uploaded_file:
                                     response_content = completion.choices[0].message.content.strip()
                                     response_parts = response_content.split("\n")
         
-                                    # Initialize parsed response with default empty values
+                                    # Initialize parsed response with default values
                                     parsed_response = {
                                         "Index": row["Index"],
                                         "Metric": f"Metric {i + 1}",
-                                        "Selected Columns": ", ".join(required_columns),
+                                        "Selected Columns": ", ".join(selected_columns),
                                         "Score": "",
                                         "Criteria": "",
                                         "Supporting Evidence": "",
                                         "Conversation": row.get("Conversation", "")
                                     }
         
-                                    # Ensure consistent formatting by extracting specific parts
+                                    # Parse response parts for consistent output
                                     for part in response_parts:
                                         if part.startswith("Criteria:"):
                                             parsed_response["Criteria"] = part.split("Criteria:", 1)[-1].strip()
@@ -273,7 +284,7 @@ if uploaded_file:
                                         elif part.startswith("Score:"):
                                             parsed_response["Score"] = part.split("Score:", 1)[-1].strip()
         
-                                    # Check if all fields are filled; handle missing data
+                                    # Add defaults for missing fields
                                     if not parsed_response["Criteria"]:
                                         parsed_response["Criteria"] = "Criteria not provided."
                                     if not parsed_response["Supporting Evidence"]:
@@ -288,6 +299,7 @@ if uploaded_file:
                             st.session_state.combined_results.extend(results)
                             st.write(f"Results for Metric {i + 1}:")
                             st.dataframe(pd.DataFrame(results))
+
 
 
 
