@@ -242,7 +242,8 @@ if uploaded_file:
                                     )
 
                                     response_content = completion.choices[0].message.content.strip()
-                                    st.write(response_content)
+                                    response_parts = response_content.split("\n")
+
                                     parsed_response = {
                                         "Index": row["Index"],
                                         "Metric": f"Metric {i + 1}",
@@ -253,7 +254,6 @@ if uploaded_file:
                                         "Conversation": row.get("Conversation", "")
                                     }
 
-                                    response_parts = response_content.split("\n")
                                     for part in response_parts:
                                         if part.startswith("Criteria:"):
                                             parsed_response["Criteria"] = part.split("Criteria:", 1)[-1].strip()
