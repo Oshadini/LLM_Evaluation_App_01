@@ -161,19 +161,13 @@ if uploaded_file:
                                 st.success(f"System Prompt for Metric {i + 1} is valid.")
 
                     if st.button(f"Metric {i + 1} Results", key=f"generate_results_{i}"):
-                        column_mapping = {
-                            "Question": "question",
-                            "Context": "formatted_context",
-                            "Answer": "formatted_history",
-                            "Reference Context": "formatted_reference_context",
-                            "Reference Answer": "formatted_reference_answer"
-                        }
+
                         results = []
                         for index, row in df.iterrows():
                             params = {"system_prompt": system_prompt}
                             for col in selected_columns:
-                                if col in column_mapping:
-                                    params[column_mapping[col]] = row[col]
+                                if col in required_columns:
+                                    params[col] = row[col]
 
                             score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
                             result_row = {
@@ -182,24 +176,12 @@ if uploaded_file:
                                 "Selected Columns": ", ".join(selected_columns),
                                 "Score": score,
                                 "Criteria": details["criteria"],
-                                "Supporting Evidence": details["supporting_evidence"],
-                                "Question": row["Question"],
-                                "Context": row["Context"],
-                                "Answer": row["Answer"],
-                                "Reference Context": row["Reference Context"],
-                                "Reference Answer": row["Reference Answer"]
+                                "Supporting Evidence": details["supporting_evidence"]
                             }
                             results.append(result_row)
                         st.session_state.combined_results.extend(results)
                         st.write(f"Results for Metric {i + 1}:")
                         st.dataframe(pd.DataFrame(results))
-
-                if num_metrics > 1 and st.button("Overall Results"):
-                    if st.session_state.combined_results:
-                        st.write("Combined Results:")
-                        st.dataframe(pd.DataFrame(st.session_state.combined_results))
-                    else:
-                        st.warning("No results to combine. Please generate results for individual metrics first.")
 
         elif "Conversation" in df.columns and "Agent Prompt" in df.columns:
             # Code 2 processing
@@ -225,12 +207,6 @@ if uploaded_file:
                         </h3>
                     """, unsafe_allow_html=True)
 
-                    selected_columns = st.multiselect(
-                        f"Select columns for Metric {i + 1}:",
-                        options=required_columns[1:],
-                        key=f"columns_{i}"
-                    )
-
                     system_prompt = st.text_area(
                         f"Enter the System Prompt for Metric {i + 1}:",
                         height=200
@@ -240,8 +216,6 @@ if uploaded_file:
                         if system_prompt.strip() == "":
                             st.error("Please enter a valid system prompt.")
                         else:
-                            st.write("Evaluating conversations. Please wait...")
-
                             results = []
                             for index, row in df.iterrows():
                                 try:
@@ -272,11 +246,10 @@ if uploaded_file:
                                     parsed_response = {
                                         "Index": row["Index"],
                                         "Metric": f"Metric {i + 1}",
-                                        "Selected Columns": ", ".join(selected_columns),
+                                        "Selected Columns": ", ".join(required_columns),
                                         "Score": "",
                                         "Criteria": "",
                                         "Supporting Evidence": "",
-                                        "Agent Prompt": row.get("Agent Prompt", ""),
                                         "Conversation": row.get("Conversation", "")
                                     }
 
@@ -296,13 +269,6 @@ if uploaded_file:
                             st.session_state.combined_results.extend(results)
                             st.write(f"Results for Metric {i + 1}:")
                             st.dataframe(pd.DataFrame(results))
-
-                if num_metrics > 1 and st.button("Overall Results"):
-                    if st.session_state.combined_results:
-                        st.write("Combined Results:")
-                        st.dataframe(pd.DataFrame(st.session_state.combined_results))
-                    else:
-                        st.warning("No results to combine. Please generate results for individual metrics first.")
 
         else:
             st.error("The uploaded file format is not recognized. Please ensure it matches one of the expected formats.")
