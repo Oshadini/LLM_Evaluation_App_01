@@ -112,8 +112,8 @@ if uploaded_file:
 
                                     evaluation_type = "Factual Correctness" if (i + 1) % 2 == 0 else "Relevance"
 
-                                    completion = openai.ChatCompletion.create(
-                                        model="gpt-4",
+                                    completion = openai.chat.completions.create(
+                                        model="gpt-4o",
                                         messages=[
                                             {"role": "user", "content": (
                                                 f"Generate a system prompt less than 200 tokens to evaluate {evaluation_type.lower()} "
@@ -260,8 +260,8 @@ if uploaded_file:
                                     Score: [Provide a numerical or qualitative score here]
                                     """
 
-                                    completion = openai.ChatCompletion.create(
-                                        model="gpt-4",
+                                    completion = openai.chat.completions.create(
+                                        model="gpt-4o",
                                         messages=[
                                             {"role": "system", "content": "You are an evaluator analyzing agent conversations."},
                                             {"role": "user", "content": evaluation_prompt}
