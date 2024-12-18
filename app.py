@@ -15,18 +15,13 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
         try:
             # Construct the evaluation prompt for GPT-4
             evaluation_prompt = f"""
-
             System Prompt: {system_prompt}
 
-
-            
             Index: {row['Index']}
             Conversation: {row['Conversation']}
             Agent Prompt: {row['Agent Prompt']}
 
             Evaluate the entire conversation for Agent-Goal Accuracy. Use the following format:
-
-    
             
             Criteria: [Explain how well the Agent responded to the User's input and fulfilled their goals]
             Supporting Evidence: [Highlight specific faulty or insufficient responses from the Agent]
@@ -34,8 +29,8 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
             """
 
             # Call GPT-4 API
-            completion = openai.chat.completions.create(
-                model="gpt-4o",
+            completion = openai.ChatCompletion.create(
+                model="gpt-4",
                 messages=[
                     {"role": "system", "content": "You are an evaluator analyzing agent conversations."},
                     {"role": "user", "content": evaluation_prompt}
@@ -43,9 +38,8 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
             )
 
             response_content = completion.choices[0].message.content.strip()
-            st.write(response_content)
 
-            # Parse GPT-4 response
+            # Parse GPT-4 response into structured format
             parsed_response = {
                 "Index": row["Index"],
                 "Metric": metric_name,
@@ -57,19 +51,19 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
                 "Conversation": row.get("Conversation", "")
             }
 
-            try:
-                for line in response_content.split("\n"):
-                    line = line.strip()
-                    if line.startswith("Criteria:"):
-                        parsed_response["Criteria"] = line.replace("Criteria:", "").strip()
-                    elif line.startswith("Supporting Evidence:"):
-                        parsed_response["Supporting Evidence"] = line.replace("Supporting Evidence:", "").strip()
-                    elif line.startswith("Score:"):
-                        parsed_response["Score"] = line.replace("Score:", "").strip()
-            except Exception as e:
-                parsed_response["Criteria"] = "Error"
-                parsed_response["Supporting Evidence"] = f"Error parsing GPT-4 response: {e}"
-                parsed_response["Score"] = "N/A"
+            # Extract values for Criteria, Supporting Evidence, and Score
+            for line in response_content.split("\n"):
+                line = line.strip()
+                if line.startswith("Criteria:"):
+                    parsed_response["Criteria"] = line.replace("Criteria:", "").strip()
+                elif line.startswith("Supporting Evidence:"):
+                    parsed_response["Supporting Evidence"] = line.replace("Supporting Evidence:", "").strip()
+                elif line.startswith("Score:"):
+                    parsed_response["Score"] = line.replace("Score:", "").strip()
+
+            # Validate extracted structure
+            if not (parsed_response["Criteria"] and parsed_response["Supporting Evidence"] and parsed_response["Score"]):
+                raise ValueError("Response does not contain the required structured fields.")
 
             results.append(parsed_response)
 
@@ -130,66 +124,15 @@ if uploaded_file:
                 )
 
                 # System prompt configuration
-                toggle_prompt = st.checkbox(
-                    f"Automatically generate system prompt for Metric {i + 1}", key=f"toggle_prompt_{i}"
+                system_prompt = st.text_area(
+                    f"Enter the System Prompt for Metric {i + 1}:",
+                    height=200
                 )
-
-                if toggle_prompt:
-                    if len(selected_columns) < 1:
-                        st.error(f"For Metric {i + 1}, please select at least one column.")
-                    else:
-                        if f"metric_{i}" not in st.session_state.system_prompts:
-                            try:
-                                selected_column_names = ", ".join(selected_columns)
-                                completion = openai.openai.chat.completions.create(
-                                    model="gpt-4o",
-                                    messages=[
-                                        {"role": "system", "content": "You are a helpful assistant generating system prompts."},
-                                        {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate Agent-Goal Accuracy based on the following columns: {selected_column_names}."}
-                                    ],
-                                    max_tokens=200
-                                )
-                                system_prompt = completion.choices[0].message.content.strip()
-                                st.session_state.system_prompts[f"metric_{i}"] = system_prompt
-
-                                system_prompt_lower = system_prompt.lower()
-                                missing_columns = [col for col in selected_columns if col.lower() not in system_prompt_lower]
-                                if missing_columns:
-                                    st.warning(f"Validation failed! The system prompt is missing these columns: {', '.join(missing_columns)}.")
-                                else:
-                                    st.success("Validation successful! All selected columns are included in the system prompt.")
-
-                            except Exception as e:
-                                st.error(f"Error generating or processing system prompt: {e}")
-
-                        system_prompt = st.session_state.system_prompts.get(f"metric_{i}", "")
-                        st.text_area(
-                            f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=200
-                        )
-                else:
-                    system_prompt = st.text_area(
-                        f"Enter the System Prompt for Metric {i + 1}:",
-                        height=200
-                    )
-
-                    # Add Validation Button
-                    if st.button(f"Validate Metric {i + 1}", key=f"validate_prompt_{i}"):
-                        if len(selected_columns) < 1:
-                            st.error("Please select at least one column to validate against.")
-                        else:
-                            system_prompt_lower = system_prompt.lower()
-                            missing_columns = [col for col in selected_columns if col.lower() not in system_prompt_lower]
-                            if missing_columns:
-                                st.error(f"Validation failed! The system prompt is missing these columns: {', '.join(missing_columns)}.")
-                            else:
-                                st.success("Validation successful! All selected columns are included in the system prompt.")
 
                 # Generate results for each metric
                 if st.button(f"Metric {i + 1} Results", key=f"generate_results_{i}"):
                     if system_prompt.strip() == "":
                         st.error("Please enter a valid system prompt.")
-                    elif len(selected_columns) == 1:
-                        st.error("Please select minimum two columns.")
                     else:
                         st.write("Evaluating conversations. Please wait...")
 
