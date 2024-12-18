@@ -183,111 +183,111 @@ if uploaded_file:
                         st.write(f"Results for Metric {i + 1}:")
                         st.dataframe(pd.DataFrame(results))
 
-        elif "Conversation" in df.columns and "Agent Prompt" in df.columns:
+        #elif "Conversation" in df.columns and "Agent Prompt" in df.columns:
             # Code 2 processing
 
-            # Edited section: Agentic Testing (Code 2 processing)
-            elif "Conversation" in df.columns and "Agent Prompt" in df.columns:
-                # Code 2 processing
-                required_columns = ["Index", "Conversation", "Agent Prompt"]
-                if not all(col in df.columns for col in required_columns):
-                    st.error(f"The uploaded file must contain these columns: {', '.join(required_columns)}.")
-                else:
-                    st.write("Preview of Uploaded Data:")
-                    st.dataframe(df.head())
-            
-                    num_metrics = st.number_input("Enter the number of metrics you want to define:", min_value=1, step=1)
-            
-                    if "system_prompts" not in st.session_state:
-                        st.session_state.system_prompts = {}
-                    if "combined_results" not in st.session_state:
-                        st.session_state.combined_results = []
-            
-                    for i in range(num_metrics):
-                        st.markdown(f"""
-                            <hr style="border: 5px solid #000000;">
-                            <h3 style="background-color: #f0f0f0; padding: 10px; border: 2px solid #000000;">
-                                Metric {i + 1}
-                            </h3>
-                        """, unsafe_allow_html=True)
-            
-                        system_prompt = st.text_area(
-                            f"Enter the System Prompt for Metric {i + 1}:",
-                            height=200
-                        )
-            
-                        if st.button(f"Metric {i + 1} Results", key=f"generate_results_{i}"):
-                            if system_prompt.strip() == "":
-                                st.error("Please enter a valid system prompt.")
-                            else:
-                                results = []
-                                for index, row in df.iterrows():
-                                    try:
-                                        # Chunk system prompt if it exceeds a safe length
-                                        max_prompt_length = 4000  # Adjustable depending on the model's token limit
-                                        truncated_system_prompt = system_prompt[:max_prompt_length]
-            
-                                        evaluation_prompt = f"""
-                                        System Prompt: {truncated_system_prompt}
-            
-                                        Index: {row['Index']}
-                                        Conversation: {row['Conversation']}
-                                        Agent Prompt: {row['Agent Prompt']}
-            
-                                        Evaluate the entire conversation for Agent-Goal Accuracy. Use the following format:
-                                        
-                                        Criteria: [Explain how well the Agent responded to the User's input and fulfilled their goals]
-                                        Supporting Evidence: [Highlight specific faulty or insufficient responses from the Agent]
-                                        Score: [Provide a numerical or qualitative score here]
-                                        """
-            
-                                        # Generate completion
-                                        completion = openai.chat.completions.create(
-                                            model="gpt-4o",
-                                            messages=[
-                                                {"role": "system", "content": "You are an evaluator analyzing agent conversations."},
-                                                {"role": "user", "content": evaluation_prompt}
-                                            ]
-                                        )
-            
-                                        response_content = completion.choices[0].message.content.strip()
-                                        response_parts = response_content.split("\n")
-            
-                                        # Initialize parsed response with default empty values
-                                        parsed_response = {
-                                            "Index": row["Index"],
-                                            "Metric": f"Metric {i + 1}",
-                                            "Selected Columns": ", ".join(required_columns),
-                                            "Score": "",
-                                            "Criteria": "",
-                                            "Supporting Evidence": "",
-                                            "Conversation": row.get("Conversation", "")
-                                        }
-            
-                                        # Ensure consistent formatting by extracting specific parts
-                                        for part in response_parts:
-                                            if part.startswith("Criteria:"):
-                                                parsed_response["Criteria"] = part.split("Criteria:", 1)[-1].strip()
-                                            elif part.startswith("Supporting Evidence:"):
-                                                parsed_response["Supporting Evidence"] = part.split("Supporting Evidence:", 1)[-1].strip()
-                                            elif part.startswith("Score:"):
-                                                parsed_response["Score"] = part.split("Score:", 1)[-1].strip()
-            
-                                        # Check if all fields are filled; handle missing data
-                                        if not parsed_response["Criteria"]:
-                                            parsed_response["Criteria"] = "Criteria not provided."
-                                        if not parsed_response["Supporting Evidence"]:
-                                            parsed_response["Supporting Evidence"] = "Supporting evidence not provided."
-                                        if not parsed_response["Score"]:
-                                            parsed_response["Score"] = "Score not provided."
-            
-                                        results.append(parsed_response)
-                                    except Exception as e:
-                                        st.error(f"Error evaluating row {index + 1}: {e}")
-            
-                                st.session_state.combined_results.extend(results)
-                                st.write(f"Results for Metric {i + 1}:")
-                                st.dataframe(pd.DataFrame(results))
+        # Edited section: Agentic Testing (Code 2 processing)
+        elif "Conversation" in df.columns and "Agent Prompt" in df.columns:
+            # Code 2 processing
+            required_columns = ["Index", "Conversation", "Agent Prompt"]
+            if not all(col in df.columns for col in required_columns):
+                st.error(f"The uploaded file must contain these columns: {', '.join(required_columns)}.")
+            else:
+                st.write("Preview of Uploaded Data:")
+                st.dataframe(df.head())
+        
+                num_metrics = st.number_input("Enter the number of metrics you want to define:", min_value=1, step=1)
+        
+                if "system_prompts" not in st.session_state:
+                    st.session_state.system_prompts = {}
+                if "combined_results" not in st.session_state:
+                    st.session_state.combined_results = []
+        
+                for i in range(num_metrics):
+                    st.markdown(f"""
+                        <hr style="border: 5px solid #000000;">
+                        <h3 style="background-color: #f0f0f0; padding: 10px; border: 2px solid #000000;">
+                            Metric {i + 1}
+                        </h3>
+                    """, unsafe_allow_html=True)
+        
+                    system_prompt = st.text_area(
+                        f"Enter the System Prompt for Metric {i + 1}:",
+                        height=200
+                    )
+        
+                    if st.button(f"Metric {i + 1} Results", key=f"generate_results_{i}"):
+                        if system_prompt.strip() == "":
+                            st.error("Please enter a valid system prompt.")
+                        else:
+                            results = []
+                            for index, row in df.iterrows():
+                                try:
+                                    # Chunk system prompt if it exceeds a safe length
+                                    max_prompt_length = 4000  # Adjustable depending on the model's token limit
+                                    truncated_system_prompt = system_prompt[:max_prompt_length]
+        
+                                    evaluation_prompt = f"""
+                                    System Prompt: {truncated_system_prompt}
+        
+                                    Index: {row['Index']}
+                                    Conversation: {row['Conversation']}
+                                    Agent Prompt: {row['Agent Prompt']}
+        
+                                    Evaluate the entire conversation for Agent-Goal Accuracy. Use the following format:
+                                    
+                                    Criteria: [Explain how well the Agent responded to the User's input and fulfilled their goals]
+                                    Supporting Evidence: [Highlight specific faulty or insufficient responses from the Agent]
+                                    Score: [Provide a numerical or qualitative score here]
+                                    """
+        
+                                    # Generate completion
+                                    completion = openai.chat.completions.create(
+                                        model="gpt-4o",
+                                        messages=[
+                                            {"role": "system", "content": "You are an evaluator analyzing agent conversations."},
+                                            {"role": "user", "content": evaluation_prompt}
+                                        ]
+                                    )
+        
+                                    response_content = completion.choices[0].message.content.strip()
+                                    response_parts = response_content.split("\n")
+        
+                                    # Initialize parsed response with default empty values
+                                    parsed_response = {
+                                        "Index": row["Index"],
+                                        "Metric": f"Metric {i + 1}",
+                                        "Selected Columns": ", ".join(required_columns),
+                                        "Score": "",
+                                        "Criteria": "",
+                                        "Supporting Evidence": "",
+                                        "Conversation": row.get("Conversation", "")
+                                    }
+        
+                                    # Ensure consistent formatting by extracting specific parts
+                                    for part in response_parts:
+                                        if part.startswith("Criteria:"):
+                                            parsed_response["Criteria"] = part.split("Criteria:", 1)[-1].strip()
+                                        elif part.startswith("Supporting Evidence:"):
+                                            parsed_response["Supporting Evidence"] = part.split("Supporting Evidence:", 1)[-1].strip()
+                                        elif part.startswith("Score:"):
+                                            parsed_response["Score"] = part.split("Score:", 1)[-1].strip()
+        
+                                    # Check if all fields are filled; handle missing data
+                                    if not parsed_response["Criteria"]:
+                                        parsed_response["Criteria"] = "Criteria not provided."
+                                    if not parsed_response["Supporting Evidence"]:
+                                        parsed_response["Supporting Evidence"] = "Supporting evidence not provided."
+                                    if not parsed_response["Score"]:
+                                        parsed_response["Score"] = "Score not provided."
+        
+                                    results.append(parsed_response)
+                                except Exception as e:
+                                    st.error(f"Error evaluating row {index + 1}: {e}")
+        
+                            st.session_state.combined_results.extend(results)
+                            st.write(f"Results for Metric {i + 1}:")
+                            st.dataframe(pd.DataFrame(results))
 
 
 
