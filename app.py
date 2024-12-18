@@ -205,22 +205,6 @@ def process_format_one(data):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     #st.dataframe(data.head())
 
 def process_format_two(data):
@@ -321,7 +305,7 @@ def process_format_two(data):
     # Streamlit UI
     st.write("Upload an Excel or CSV file with headers: Index, Conversation, and Agent Prompt to evaluate the conversation.")
     
-    uploaded_file = st.file_uploader("Upload your file", type=["xlsx", "csv"])
+    #uploaded_file = st.file_uploader("Upload your file", type=["xlsx", "csv"])
     
     if uploaded_file:
         try:
@@ -398,20 +382,12 @@ def process_format_two(data):
 
 
 
-
-
-
-
-
-
-
-
     
     #st.dataframe(data.head())
 
 # File upload section
 st.title("File Format Detection and Processing Tool")
-uploaded_file = st.file_uploader("Upload your file", type=["csv", "xlsx"])
+#uploaded_file = st.file_uploader("Upload your file", type=["csv", "xlsx"])
 
 if uploaded_file:
     try:
