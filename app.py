@@ -268,8 +268,8 @@ if uploaded_file:
                                     truncated_prompt = base_prompt[:max_token_length]
         
                                     # Generate completion
-                                    completion = openai.ChatCompletion.create(
-                                        model="gpt-4",
+                                    completion = openai.chat.completions.create(
+                                        model="gpt-4o",
                                         messages=[
                                             {"role": "system", "content": "You are an evaluator analyzing agent conversations."},
                                             {"role": "user", "content": truncated_prompt}
