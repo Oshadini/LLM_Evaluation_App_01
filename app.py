@@ -15,8 +15,7 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
         try:
             # Construct the evaluation prompt for GPT-4
             evaluation_prompt = f"""
-            System Prompt: {system_prompt}
-
+            
             Index: {row['Index']}
             Conversation: {row['Conversation']}
             Agent Prompt: {row['Agent Prompt']}
