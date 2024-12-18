@@ -23,8 +23,8 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
 
             Evaluate the entire conversation for Agent-Goal Accuracy. Use the following format:
 
-            Criteria: [Explain what are the criterias used for the evaluation]
-            Supporting Evidence: [Explain how well the Agent responded to the User's input and fulfilled their goals and highlight specific faulty or insufficient responses from the Agent]
+            Criteria: [Explain how well the Agent responded to the User's input and fulfilled their goals]
+            Supporting Evidence: [ Highlight specific faulty or insufficient responses from the Agent]
             Score: [Provide a numerical or qualitative score here]
             """
 
