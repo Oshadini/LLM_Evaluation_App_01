@@ -1,3 +1,5 @@
+# File: conversation_evaluator.py
+
 import streamlit as st
 import pandas as pd
 import openai
@@ -20,12 +22,6 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
             Index: {row['Index']}
             Conversation: {row['Conversation']}
             Agent Prompt: {row['Agent Prompt']}
-
-            Evaluate the entire conversation for Agent-Goal Accuracy. Use the following format:
-
-            Criteria: [Explain how well the Agent responded to the User's input and fulfilled their goals]
-            Supporting Evidence: [ Highlight specific faulty or insufficient responses from the Agent]
-            Score: [Provide a numerical or qualitative score here]
             """
 
             # Call GPT-4 API
@@ -53,14 +49,18 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
             }
 
             try:
-                for line in response_content.split("\n"):
-                    line = line.strip()
-                    if line.startswith("Criteria:"):
-                        parsed_response["Criteria"] = line.replace("Criteria:", "").strip()
-                    elif line.startswith("Supporting Evidence:"):
-                        parsed_response["Supporting Evidence"] = line.replace("Supporting Evidence:", "").strip()
-                    elif line.startswith("Score:"):
-                        parsed_response["Score"] = line.replace("Score:", "").strip()
+                # Handle case when response only contains a single number
+                if response_content.isdigit() or (response_content.replace(".", "", 1).isdigit() and response_content.count(".") < 2):
+                    parsed_response["Score"] = response_content
+                else:
+                    for line in response_content.split("\n"):
+                        line = line.strip()
+                        if line.startswith("Criteria:"):
+                            parsed_response["Criteria"] = line.replace("Criteria:", "").strip()
+                        elif line.startswith("Supporting Evidence:"):
+                            parsed_response["Supporting Evidence"] = line.replace("Supporting Evidence:", "").strip()
+                        elif line.startswith("Score:"):
+                            parsed_response["Score"] = line.replace("Score:", "").strip()
             except Exception as e:
                 parsed_response["Criteria"] = "Error"
                 parsed_response["Supporting Evidence"] = f"Error parsing GPT-4 response: {e}"
@@ -125,59 +125,22 @@ if uploaded_file:
                 )
 
                 # System prompt configuration
-                toggle_prompt = st.checkbox(
-                    f"Automatically generate system prompt for Metric {i + 1}", key=f"toggle_prompt_{i}"
+                system_prompt = st.text_area(
+                    f"Enter the System Prompt for Metric {i + 1}:",
+                    height=200
                 )
 
-                if toggle_prompt:
+                # Validate prompt
+                if st.button(f"Validate Metric {i + 1}", key=f"validate_prompt_{i}"):
                     if len(selected_columns) < 1:
-                        st.error(f"For Metric {i + 1}, please select at least one column.")
+                        st.error("Please select at least one column to validate against.")
                     else:
-                        if f"metric_{i}" not in st.session_state.system_prompts:
-                            try:
-                                selected_column_names = ", ".join(selected_columns)
-                                completion = openai.openai.chat.completions.create(
-                                    model="gpt-4o",
-                                    messages=[
-                                        {"role": "system", "content": "You are a helpful assistant generating system prompts."},
-                                        {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate Agent-Goal Accuracy based on the following columns: {selected_column_names}."}
-                                    ],
-                                    max_tokens=200
-                                )
-                                system_prompt = completion.choices[0].message.content.strip()
-                                st.session_state.system_prompts[f"metric_{i}"] = system_prompt
-
-                                system_prompt_lower = system_prompt.lower()
-                                missing_columns = [col for col in selected_columns if col.lower() not in system_prompt_lower]
-                                if missing_columns:
-                                    st.warning(f"Validation failed! The system prompt is missing these columns: {', '.join(missing_columns)}.")
-                                else:
-                                    st.success("Validation successful! All selected columns are included in the system prompt.")
-
-                            except Exception as e:
-                                st.error(f"Error generating or processing system prompt: {e}")
-
-                        system_prompt = st.session_state.system_prompts.get(f"metric_{i}", "")
-                        st.text_area(
-                            f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=200
-                        )
-                else:
-                    system_prompt = st.text_area(
-                        f"Enter the System Prompt for Metric {i + 1}:",
-                        height=200
-                    )
-
-                    # Add Validation Button
-                    if st.button(f"Validate Metric {i + 1}", key=f"validate_prompt_{i}"):
-                        if len(selected_columns) < 1:
-                            st.error("Please select at least one column to validate against.")
+                        system_prompt_lower = system_prompt.lower()
+                        missing_columns = [col for col in selected_columns if col.lower() not in system_prompt_lower]
+                        if missing_columns:
+                            st.error(f"Validation failed! The system prompt is missing these columns: {', '.join(missing_columns)}.")
                         else:
-                            system_prompt_lower = system_prompt.lower()
-                            missing_columns = [col for col in selected_columns if col.lower() not in system_prompt_lower]
-                            if missing_columns:
-                                st.error(f"Validation failed! The system prompt is missing these columns: {', '.join(missing_columns)}.")
-                            else:
-                                st.success("Validation successful! All selected columns are included in the system prompt.")
+                            st.success("Validation successful! All selected columns are included in the system prompt.")
 
                 # Generate results for each metric
                 if st.button(f"Metric {i + 1} Results", key=f"generate_results_{i}"):
