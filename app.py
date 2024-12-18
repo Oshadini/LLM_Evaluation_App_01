@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import re
@@ -102,37 +103,41 @@ if uploaded_file:
                         f"Automatically generate system prompt for Metric {i + 1}", key=f"toggle_prompt_{i}"
                     )
 
+
+
                     if toggle_prompt:
-                        if len(selected_columns) < 1:
-                            st.error(f"For Metric {i + 1}, please select at least one column.")
-                        else:
-                            if f"metric_{i}" not in st.session_state.system_prompts:
-                                try:
-                                    selected_column_names = ", ".join(selected_columns)
+                        # Alternate between "huhu" and "haha" based on the metric index
+                      if i % 2 == 0:
+                            system_prompt = """You are a RELEVANCE grader; providing the relevance of the given question to the given answer.
+                                            Respond only as a number from 0 to 10 where 0 is the least relevant and 10 is the most relevant. 
+                                        
+                                            A few additional scoring guidelines:
+                                            - Long answer should score equally well as short answer.
+                                            - RELEVANCE score should increase as the answer provides more RELEVANT context to the question.
+                                            - RELEVANCE score should increase as the answer provides RELEVANT context to more parts of the question.
+                                            - Answer that is RELEVANT to some of the question should score of 2, 3, or 4. Higher score indicates more RELEVANCE.
+                                            - Answer that is RELEVANT to most of the question should get a score of 5, 6, 7, or 8. Higher score indicates more RELEVANCE.
+                                            - Answer that is RELEVANT to the entire question should get a score of 9 or 10. Higher score indicates more RELEVANCE.
+                                            - Answer must be relevant and helpful for answering the entire question to get a score of 10.
+                                            - Never elaborate."""
+                      else:
+                            system_prompt = """You are a FACTUAL ACCURACY grader; evaluating the factual correctness of the given answer based on the question and context.  
+                                                Respond only as a number from 0 to 10 where 0 indicates completely factually inaccurate and 10 indicates completely factually accurate.  
+                                                
+                                                A few additional scoring guidelines:  
+                                                - Long answers should score equally well as short answers if they are factually accurate.  
+                                                - The FACTUAL ACCURACY score should increase as the answer contains more factually correct information related to the question and context.  
+                                                - The presence of minor factual inaccuracies should lead to scores of 2, 3, or 4. Higher scores indicate fewer inaccuracies.  
+                                                - If most parts of the answers are factually correct, the score should be 5, 6, 7, or 8. Higher scores indicate greater factual accuracy.  
+                                                - If the entire answer is factually accurate and aligned with the question and context, the score should be 9 or 10.  
+                                                - The answer must strictly avoid fabrications or contradictions to achieve a score of 10.  
+                                                - Never elaborate."""
 
-                                    evaluation_type = "Factual Correctness" if (i + 1) % 2 == 0 else "Relevance"
+                      st.text_area(
+                        f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=200
+                        )
+                      st.success(f"System Prompt for Metric {i + 1} is hardcoded as 'huhu'.")
 
-                                    completion = openai.chat.completions.create(
-                                        model="gpt-4o",
-                                        messages=[{
-                                            "role": "user", "content": (
-                                                f"Generate a system prompt less than 200 tokens to evaluate {evaluation_type.lower()} "
-                                                f"based on the following columns: {selected_column_names}. "
-                                                f"Please provide a rating from 1 (not at all {evaluation_type.lower()}) to 10 (highly {evaluation_type.lower()})."
-                                            )
-                                        }],
-                                        max_tokens=200
-                                    )
-                                    system_prompt = completion.choices[0].message.content.strip()
-                                    st.session_state.system_prompts[f"metric_{i}"] = system_prompt
-                                except Exception as e:
-                                    st.error(f"Error generating or processing system prompt: {e}")
-
-                            system_prompt = st.session_state.system_prompts.get(f"metric_{i}", "")
-                            st.text_area(
-                                f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=200
-                            )
-                            st.success(f"System Prompt for Metric {i + 1} is valid.")
                     else:
                         system_prompt = st.text_area(
                             f"Enter the System Prompt for Metric {i + 1}:",
@@ -212,7 +217,7 @@ if uploaded_file:
                 st.write("Preview of Uploaded Data:")
                 st.dataframe(df.head())
                 
-                MAX_PROMPT_LENGTH = 1500  # Define maximum allowable characters for the system prompt
+                MAX_PROMPT_LENGTH = 2000  # Define maximum allowable characters for the system prompt
                 
                 def truncate_prompt(prompt: str, max_length: int = MAX_PROMPT_LENGTH) -> str:
                     """
@@ -326,11 +331,41 @@ if uploaded_file:
                         key=f"columns_{i}"
                     )
 
-                    # System prompt configuration
-                    system_prompt = st.text_area(
-                        f"Enter the System Prompt for Metric {i + 1}:",
-                        height=200
+                    toggle_prompt = st.checkbox(
+                        f"Automatically generate system prompt for Metric {i + 1}", key=f"toggle_prompt_{i}"
                     )
+
+
+
+                    if toggle_prompt:
+               
+                      system_prompt = """Role: You are responsible for evaluating the AGENT-GOAL ACCURACY of a conversation based on its alignment with the AGENT PROMPT.  
+
+                                        Scoring Scale (0-10):  
+                                        0 indicates the responses are entirely unrelated to the AGENT PROMPT.  
+                                        1 to 4 reflects limited alignment, lacking depth, precision, or relevance. Scores of 1 to 2 represent negligible coverage with minimal helpfulness, while 3 to 4 indicate partial coverage with insufficient detail or completeness.  
+                                        5 to 8 represents reasonable alignment with clear and relevant responses. Scores of 5 to 6 cover most of the prompt but have significant gaps, while 7 to 8 reflect strong alignment with minor omissions or gaps.  
+                                        9 to 10 signifies comprehensive alignment with precise, complete, and entirely relevant responses. A score of 9 is near-perfect with minimal imperfections, and a score of 10 is fully sufficient and flawlessly aligned.  
+                                        
+                                        Criteria for evaluation include how well the agent responses address user inputs and the AGENT PROMPT, the accuracy, relevance, and helpfulness of the responses, and the completeness and precision in meeting the context of the AGENT PROMPT.  
+                                        
+                                        Supporting evidence should highlight areas of strong alignment and fulfillment of goals while identifying specific faults, such as misunderstanding, inaccuracy, or incompleteness, that detract from the relevance or helpfulness of the responses.  
+                                        
+                                        Output must be a single numerical score between 0 and 10 with no additional text.
+                                        """
+        
+
+                      st.text_area(
+                        f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=200
+                        )
+                      st.success(f"System Prompt for Metric {i + 1} is hardcoded as 'huhu'.")
+
+                    else:
+                        system_prompt = st.text_area(
+                            f"Enter the System Prompt for Metric {i + 1}:",
+                            height=200
+                        )
+                    
 
                     # Generate results for each metric
                     if st.button(f"Metric {i + 1} Results", key=f"generate_results_{i}"):
@@ -359,4 +394,3 @@ if uploaded_file:
 
     except Exception as e:
         st.error(f"Error displaying combined results: {e}")
-
