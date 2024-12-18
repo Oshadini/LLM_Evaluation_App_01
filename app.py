@@ -243,6 +243,7 @@ if uploaded_file:
 
                                     response_content = completion.choices[0].message.content.strip()
                                     response_parts = response_content.split("\n")
+                                    st.write(response_content)
 
                                     parsed_response = {
                                         "Index": row["Index"],
