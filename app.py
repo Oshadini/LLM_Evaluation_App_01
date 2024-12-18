@@ -161,13 +161,19 @@ if uploaded_file:
                                 st.success(f"System Prompt for Metric {i + 1} is valid.")
 
                     if st.button(f"Metric {i + 1} Results", key=f"generate_results_{i}"):
-
+                        column_mapping = {
+                            "Question": "question",
+                            "Context": "formatted_context",
+                            "Answer": "formatted_history",
+                            "Reference Context": "formatted_reference_context",
+                            "Reference Answer": "formatted_reference_answer"
+                        }
                         results = []
                         for index, row in df.iterrows():
                             params = {"system_prompt": system_prompt}
                             for col in selected_columns:
-                                if col in required_columns:
-                                    params[col] = row[col]
+                                if col in column_mapping:
+                                    params[column_mapping[col]] = row[col]
 
                             score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
                             result_row = {
@@ -176,17 +182,25 @@ if uploaded_file:
                                 "Selected Columns": ", ".join(selected_columns),
                                 "Score": score,
                                 "Criteria": details["criteria"],
-                                "Supporting Evidence": details["supporting_evidence"]
+                                "Supporting Evidence": details["supporting_evidence"],
+                                "Question": row["Question"],
+                                "Context": row["Context"],
+                                "Answer": row["Answer"],
+                                "Reference Context": row["Reference Context"],
+                                "Reference Answer": row["Reference Answer"]
                             }
                             results.append(result_row)
                         st.session_state.combined_results.extend(results)
                         st.write(f"Results for Metric {i + 1}:")
                         st.dataframe(pd.DataFrame(results))
 
-        #elif "Conversation" in df.columns and "Agent Prompt" in df.columns:
-            # Code 2 processing
+                if num_metrics > 1 and st.button("Overall Results"):
+                    if st.session_state.combined_results:
+                        st.write("Combined Results:")
+                        st.dataframe(pd.DataFrame(st.session_state.combined_results))
+                    else:
+                        st.warning("No results to combine. Please generate results for individual metrics first.")
 
-        # Agentic Testing (Code 2 processing with edits)
         elif "Conversation" in df.columns and "Agent Prompt" in df.columns:
             # Code 2 processing
             required_columns = ["Index", "Conversation", "Agent Prompt"]
@@ -195,14 +209,14 @@ if uploaded_file:
             else:
                 st.write("Preview of Uploaded Data:")
                 st.dataframe(df.head())
-        
+
                 num_metrics = st.number_input("Enter the number of metrics you want to define:", min_value=1, step=1)
-        
+
                 if "system_prompts" not in st.session_state:
                     st.session_state.system_prompts = {}
                 if "combined_results" not in st.session_state:
                     st.session_state.combined_results = []
-        
+
                 for i in range(num_metrics):
                     st.markdown(f"""
                         <hr style="border: 5px solid #000000;">
@@ -210,49 +224,41 @@ if uploaded_file:
                             Metric {i + 1}
                         </h3>
                     """, unsafe_allow_html=True)
-        
-                    # Column selection for agentic testing
+
                     selected_columns = st.multiselect(
                         f"Select columns for Metric {i + 1}:",
                         options=required_columns[1:],
-                        key=f"columns_agentic_{i}"
+                        key=f"columns_{i}"
                     )
-        
+
                     system_prompt = st.text_area(
                         f"Enter the System Prompt for Metric {i + 1}:",
                         height=200
                     )
-        
+
                     if st.button(f"Metric {i + 1} Results", key=f"generate_results_{i}"):
                         if system_prompt.strip() == "":
                             st.error("Please enter a valid system prompt.")
-                        elif len(selected_columns) < 1:
-                            st.error(f"For Metric {i + 1}, please select at least one column.")
                         else:
+                            st.write("Evaluating conversations. Please wait...")
+
                             results = []
                             for index, row in df.iterrows():
                                 try:
-                                    # Ensure only selected columns are passed for evaluation
-                                    evaluation_data = {col: row[col] for col in selected_columns}
-        
-                                    # Truncate lengthy system prompt
-                                    max_prompt_length = 4000  # Adjustable depending on model's token limit
-                                    truncated_system_prompt = system_prompt[:max_prompt_length]
-        
                                     evaluation_prompt = f"""
-                                    System Prompt: {truncated_system_prompt}
-        
+                                    System Prompt: {system_prompt}
+
                                     Index: {row['Index']}
-                                    {', '.join([f"{col}: {evaluation_data[col]}" for col in selected_columns])}
-        
+                                    Conversation: {row['Conversation']}
+                                    Agent Prompt: {row['Agent Prompt']}
+
                                     Evaluate the entire conversation for Agent-Goal Accuracy. Use the following format:
                                     
                                     Criteria: [Explain how well the Agent responded to the User's input and fulfilled their goals]
                                     Supporting Evidence: [Highlight specific faulty or insufficient responses from the Agent]
                                     Score: [Provide a numerical or qualitative score here]
                                     """
-        
-                                    # Generate completion
+
                                     completion = openai.chat.completions.create(
                                         model="gpt-4o",
                                         messages=[
@@ -260,11 +266,9 @@ if uploaded_file:
                                             {"role": "user", "content": evaluation_prompt}
                                         ]
                                     )
-        
+
                                     response_content = completion.choices[0].message.content.strip()
-                                    response_parts = response_content.split("\n")
-        
-                                    # Initialize parsed response with default values
+                                    st.write(response_content)
                                     parsed_response = {
                                         "Index": row["Index"],
                                         "Metric": f"Metric {i + 1}",
@@ -272,10 +276,11 @@ if uploaded_file:
                                         "Score": "",
                                         "Criteria": "",
                                         "Supporting Evidence": "",
+                                        "Agent Prompt": row.get("Agent Prompt", ""),
                                         "Conversation": row.get("Conversation", "")
                                     }
-        
-                                    # Parse response parts for consistent output
+
+                                    response_parts = response_content.split("\n")
                                     for part in response_parts:
                                         if part.startswith("Criteria:"):
                                             parsed_response["Criteria"] = part.split("Criteria:", 1)[-1].strip()
@@ -283,28 +288,22 @@ if uploaded_file:
                                             parsed_response["Supporting Evidence"] = part.split("Supporting Evidence:", 1)[-1].strip()
                                         elif part.startswith("Score:"):
                                             parsed_response["Score"] = part.split("Score:", 1)[-1].strip()
-        
-                                    # Add defaults for missing fields
-                                    if not parsed_response["Criteria"]:
-                                        parsed_response["Criteria"] = "Criteria not provided."
-                                    if not parsed_response["Supporting Evidence"]:
-                                        parsed_response["Supporting Evidence"] = "Supporting evidence not provided."
-                                    if not parsed_response["Score"]:
-                                        parsed_response["Score"] = "Score not provided."
-        
+
                                     results.append(parsed_response)
                                 except Exception as e:
                                     st.error(f"Error evaluating row {index + 1}: {e}")
-        
+
                             st.session_state.combined_results.extend(results)
                             st.write(f"Results for Metric {i + 1}:")
                             st.dataframe(pd.DataFrame(results))
 
+                if num_metrics > 1 and st.button("Overall Results"):
+                    if st.session_state.combined_results:
+                        st.write("Combined Results:")
+                        st.dataframe(pd.DataFrame(st.session_state.combined_results))
+                    else:
+                        st.warning("No results to combine. Please generate results for individual metrics first.")
 
-
-
-
-        
         else:
             st.error("The uploaded file format is not recognized. Please ensure it matches one of the expected formats.")
 
