@@ -82,32 +82,6 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
 
     return results
 
-# Hardcoded system prompt
-HARDCODED_PROMPT = """
-You are a AGENT-GOAL ACCURACY grader tasked with assessing the AGENT-GOAL ACCURACY of the provided CONVERSATION in relation to the given AGENT PROMPT. Your evaluation must adhere strictly to the following guidelines.
-
-The primary goal is to assign a AGENT-GOAL ACCURACY score that reflects how well the AGENT RESPONSES provided in CONVERSATION align with the AGENT PROMPT. This evaluation focuses solely on the quality, completeness, and helpfulness of the information provided in the AGENT RESPONSES in CONVERSATION in addressing the AGENT PROMPT.
-
-You must respond only with a single number from 0 to 10. No elaboration, justification, or additional text should accompany the score.
-
-The AGENT-GOAL ACCURACY score ranges from 0 (least relevant) to 10 (most relevant). Use the following detailed criteria to determine the score.
-
-- 0: The AGENT RESPONSES in CONVERSATION are entirely unrelated to the AGENT PROMPT. There is no evidence of any alignment, context, or attempt to address the AGENT PROMPT.
-- 1 to 4: The AGENT RESPONSES in CONVERSATION address only a small portion of the AGENT PROMPT. The provided information lacks depth, precision, or sufficient context to be significantly helpful.
-- 1-2: Minimal or superficial AGENT-GOAL ACCURACY; only a negligible portion of AGENT PROMPT is addressed.
-- 3-4: Some AGENT-GOAL ACCURACY, but the coverage remains incomplete or only partially addresses the AGENT PROMPT.
-- 5 to 8: The AGENT RESPONSES in CONVERSATION address most of the AGENT PROMPT with a reasonable level of helpfulness. The information provided is clear, relevant, and covers the majority of the AGENT PROMPT.
-- 5-6: Covers most of the AGENT PROMPT, but some important areas remain insufficiently addressed.
-- 7-8: Strong coverage and alignment with AGENT PROMPT, with minor gaps or lack of completeness.
-- 9 to 10: The AGENT RESPONSES in CONVERSATION are comprehensively aligned with the AGENT PROMPT. The information provided is precise, complete, and entirely relevant to all parts of the AGENT PROMPT. The content is not only accurate but also helpful and sufficient to address the entire AGENT PROMPT.
-- 9: Near-perfect alignment; only very minor omissions or imperfections exist.
-- 10: Fully relevant with no gaps; the AGENT RESPONSES in CONVERSATION are complete, precise, and entirely sufficient to address every aspect of the AGENT PROMPT.
-
-Criteria: The evaluation must consider specific factors when determining the AGENT-GOAL ACCURACY score. These factors include how well the AGENT RESPONSES address the USER INPUTS, the accuracy and helpfulness of the responses in relation to the AGENT PROMPT, and whether the information provided is sufficiently complete and precise to satisfy the context of the AGENT PROMPT.
-
-Supporting Evidence: To provide a comprehensive evaluation, it is necessary to identify and highlight areas of strong alignment where the Agent fulfilled the User’s goals as well as specific faulty or insufficient responses that detract from the overall relevance. Examples of such insufficiencies include cases where the Agent misunderstood the User’s intent, provided inaccurate or incomplete information, or failed to offer meaningful assistance.
-"""
-
 # Streamlit UI
 st.write("Upload an Excel or CSV file with headers: Index, Conversation, and Agent Prompt to evaluate the conversation.")
 
@@ -143,40 +117,83 @@ if uploaded_file:
                     </h3>
                 """, unsafe_allow_html=True)
 
+                # Column selection remains unchanged
                 selected_columns = st.multiselect(
                     f"Select columns for Metric {i + 1}:",
                     options=required_columns[1:],  # Skip the Index column
                     key=f"columns_{i}"
                 )
 
+                # System prompt configuration
                 toggle_prompt = st.checkbox(
-                    f"Use predefined system prompt for Metric {i + 1}", key=f"toggle_prompt_{i}"
+                    f"Automatically generate system prompt for Metric {i + 1}", key=f"toggle_prompt_{i}"
                 )
 
                 if toggle_prompt:
-                    system_prompt = HARDCODED_PROMPT
-                    st.text_area(
-                        f"System Prompt for Metric {i + 1} (Predefined):",
-                        value=system_prompt,
-                        height=300,
-                        disabled=True
-                    )
+                    if len(selected_columns) < 1:
+                        st.error(f"For Metric {i + 1}, please select at least one column.")
+                    else:
+                        if f"metric_{i}" not in st.session_state.system_prompts:
+                            try:
+                                selected_column_names = ", ".join(selected_columns)
+                                completion = openai.openai.chat.completions.create(
+                                    model="gpt-4o",
+                                    messages=[
+                                        {"role": "system", "content": "You are a helpful assistant generating system prompts."},
+                                        {"role": "user", "content": f"Generate a system prompt less than 200 tokens to evaluate Agent-Goal Accuracy based on the following columns: {selected_column_names}."}
+                                    ],
+                                    max_tokens=200
+                                )
+                                system_prompt = completion.choices[0].message.content.strip()
+                                st.session_state.system_prompts[f"metric_{i}"] = system_prompt
+
+                                system_prompt_lower = system_prompt.lower()
+                                missing_columns = [col for col in selected_columns if col.lower() not in system_prompt_lower]
+                                if missing_columns:
+                                    st.warning(f"Validation failed! The system prompt is missing these columns: {', '.join(missing_columns)}.")
+                                else:
+                                    st.success("Validation successful! All selected columns are included in the system prompt.")
+
+                            except Exception as e:
+                                st.error(f"Error generating or processing system prompt: {e}")
+
+                        system_prompt = st.session_state.system_prompts.get(f"metric_{i}", "")
+                        st.text_area(
+                            f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=200
+                        )
                 else:
                     system_prompt = st.text_area(
                         f"Enter the System Prompt for Metric {i + 1}:",
                         height=200
                     )
 
+                    # Add Validation Button
+                    if st.button(f"Validate Metric {i + 1}", key=f"validate_prompt_{i}"):
+                        if len(selected_columns) < 1:
+                            st.error("Please select at least one column to validate against.")
+                        else:
+                            system_prompt_lower = system_prompt.lower()
+                            missing_columns = [col for col in selected_columns if col.lower() not in system_prompt_lower]
+                            if missing_columns:
+                                st.error(f"Validation failed! The system prompt is missing these columns: {', '.join(missing_columns)}.")
+                            else:
+                                st.success("Validation successful! All selected columns are included in the system prompt.")
+
+                # Generate results for each metric
                 if st.button(f"Metric {i + 1} Results", key=f"generate_results_{i}"):
                     if system_prompt.strip() == "":
                         st.error("Please enter a valid system prompt.")
+                    elif len(selected_columns) == 1:
+                        st.error("Please select minimum two columns.")
                     else:
                         st.write("Evaluating conversations. Please wait...")
+
                         results = evaluate_conversation(system_prompt, selected_columns, df, f"Metric {i + 1}")
                         st.session_state.combined_results.extend(results)
                         st.write(f"Results for Metric {i + 1}:")
                         st.dataframe(pd.DataFrame(results))
 
+            # Combine results for all metrics
             if num_metrics > 1 and st.button("Overall Results"):
                 if st.session_state.combined_results:
                     combined_df = pd.DataFrame(st.session_state.combined_results)
