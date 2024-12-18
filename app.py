@@ -5,16 +5,15 @@ import openai
 # Set OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-MAX_PROMPT_LENGTH = 1500  # Define a maximum length for the system prompt in tokens/characters
+MAX_PROMPT_LENGTH = 1024  # Define maximum allowable characters for the system prompt
 
-def validate_prompt_length(prompt: str):
+def truncate_prompt(prompt: str, max_length: int = MAX_PROMPT_LENGTH) -> str:
     """
-    Validate the length of the system prompt. If it exceeds the allowed limit, truncate it and return a warning.
+    Truncate the prompt to fit within the allowed maximum length.
     """
-    if len(prompt) > MAX_PROMPT_LENGTH:
-        truncated_prompt = prompt[:MAX_PROMPT_LENGTH]
-        return truncated_prompt, True
-    return prompt, False
+    if len(prompt) > max_length:
+        return prompt[:max_length] + "..."
+    return prompt
 
 # Define function to evaluate conversation using GPT-4
 def evaluate_conversation(system_prompt: str, selected_columns: list, conversation: pd.DataFrame, metric_name: str) -> list:
@@ -22,11 +21,12 @@ def evaluate_conversation(system_prompt: str, selected_columns: list, conversati
     Evaluate the conversation using GPT-4 based on the system prompt provided by the user.
     """
     results = []
-    system_prompt, was_truncated = validate_prompt_length(system_prompt)
-
-    if was_truncated:
-        st.warning("The system prompt was too long and has been truncated to fit within the limit. Please revise it for better results.")
-
+    
+    # Truncate the system prompt if it's too long
+    if len(system_prompt) > MAX_PROMPT_LENGTH:
+        st.warning(f"The system prompt exceeds {MAX_PROMPT_LENGTH} characters and will be truncated.")
+        system_prompt = truncate_prompt(system_prompt)
+    
     for index, row in conversation.iterrows():
         try:
             # Construct the evaluation prompt for GPT-4
