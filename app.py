@@ -252,7 +252,7 @@ if uploaded_file:
                                     evaluation_data = {col: row[col] for col in selected_columns}
         
                                     # Dynamically adjust the prompt length for token limits
-                                    max_token_length = 4000  # Adjustable for the model's capacity
+                                    max_token_length = 40000  # Adjustable for the model's capacity
                                     base_prompt = f"""
                                     System Prompt: {system_prompt}
         
