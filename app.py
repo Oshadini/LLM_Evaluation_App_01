@@ -345,16 +345,13 @@ if uploaded_file:
                             st.dataframe(pd.DataFrame(results))
 
                 # Combine results for all metrics
+                # Check if there are combined results before displaying them
                 if num_metrics > 1 and st.button("Overall Results"):
-                    if st.session_state.combined_results:
-                        combined_df = pd.DataFrame(st.session_state.combined_results)
-                        st.write("Combined Results:")
-                        st.dataframe(combined_df)
-                        st.download_button(
-                            label="Download Combined Results as CSV",
-                            data=combined_df.to_csv(index=False),
-                            file_name="combined_evaluation_results.csv",
-                            mime="text/csv"
-                        )
-                    else:
-                        st.warning("No results to combine. Please generate results for individual metrics first.")
+                    try:
+                        if st.session_state.combined_results:
+                            st.write("Combined Results:")
+                            st.dataframe(pd.DataFrame(st.session_state.combined_results))
+                        else:
+                            st.warning("No results to combine. Please generate results for individual metrics first.")
+                    except Exception as e:
+                        st.error(f"Error displaying combined results: {e}")
