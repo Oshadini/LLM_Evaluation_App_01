@@ -266,8 +266,8 @@ if uploaded_file:
                         )
                     else:
                         st.warning("No results to combine. Please generate results for individual metrics first.")
-        except Exception as e:
-            st.error(f"An error occurred: {e}")
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
 
             MAX_PROMPT_LENGTH = 1500  # Define maximum allowable characters for the system prompt
             
