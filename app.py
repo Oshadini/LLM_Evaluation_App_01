@@ -356,4 +356,7 @@ if uploaded_file:
                     except Exception as e:
                         st.error(f"Error displaying combined results: {e}")
 
+        except Exception as e:
+            st.error(f"Error displaying combined results: {e}")
+
 
