@@ -8,7 +8,6 @@ openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Streamlit UI
 st.markdown("<h1 style='text-align: center;'>LLM Evaluation Tool</h1>", unsafe_allow_html=True)
-st.title("LLM Evaluation Tool")
 st.write("Upload an Excel file for processing. The expected formats are:")
 st.write("1. Columns: Index, Question, Context, Answer, Reference Context, Reference Answer")
 st.write("2. Columns: Index, Conversation, Agent Prompt")
