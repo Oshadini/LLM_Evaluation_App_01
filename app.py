@@ -1,60 +1,13 @@
-
 import streamlit as st
 import pandas as pd
 import re
-from typing import Tuple, Dict
-from trulens.core import Feedback
-from trulens.providers.openai import OpenAI as fOpenAI
-from trulens.core import TruSession
-from trulens.feedback import prompts
 import openai
-
-# Initialize the session
-session = TruSession()
 
 # Set OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-# Define the custom class
-class prompt_with_conversation_relevence(fOpenAI):
-    def prompt_with_conversation_relevence_feedback(self, **kwargs) -> Tuple[float, Dict]:
-        """
-        Process the dynamically selected parameters to generate relevance feedback.
-        """
-        user_prompt = ""
-        if "question" in kwargs:
-            user_prompt += "question: {question}\n\n"
-        if "formatted_history" in kwargs:
-            user_prompt += "answer: {formatted_history}\n\n"
-        if "formatted_reference_context" in kwargs:
-            user_prompt += "reference_context: {formatted_reference_context}\n\n"
-        if "formatted_reference_answer" in kwargs:
-            user_prompt += "reference_answer: {formatted_reference_answer}\n\n"
-        if "formatted_context" in kwargs:
-            user_prompt += "context: {formatted_context}\n\n"
-        user_prompt += "RELEVANCE: "
-
-        user_prompt = user_prompt.format(**kwargs)
-
-        user_prompt = user_prompt.replace(
-            "RELEVANCE:", prompts.COT_REASONS_TEMPLATE
-        )
-
-        result = self.generate_score_and_reasons(kwargs["system_prompt"], user_prompt)
-
-        details = result[1]
-        reason = details['reason'].split('\n')
-        criteria = reason[0].split(': ')[1]
-        supporting_evidence = reason[1].split(': ')[1]
-        score = reason[-1].split(': ')[1]
-
-        return score, {"criteria": criteria, "supporting_evidence": supporting_evidence}
-
-# Initialize the custom class
-prompt_with_conversation_relevence_custom = prompt_with_conversation_relevence()
-
 # Streamlit UI
-st.title("LLM Evaluation Tool")
+st.title("LLM Evaluationn Tool")
 st.write("Upload an Excel file for processing. The expected formats are:")
 st.write("1. Columns: Index, Question, Context, Answer, Reference Context, Reference Answer")
 st.write("2. Columns: Index, Conversation, Agent Prompt")
@@ -80,8 +33,6 @@ if uploaded_file:
 
                 num_metrics = st.number_input("Enter the number of metrics you want to define:", min_value=1, step=1)
 
-                if "system_prompts" not in st.session_state:
-                    st.session_state.system_prompts = {}
                 if "combined_results" not in st.session_state:
                     st.session_state.combined_results = []
 
@@ -103,11 +54,8 @@ if uploaded_file:
                         f"Automatically generate system prompt for Metric {i + 1}", key=f"toggle_prompt_{i}"
                     )
 
-
-
                     if toggle_prompt:
-                        # Alternate between "huhu" and "haha" based on the metric index
-                      if i % 2 == 0:
+                        if i % 2 == 0:
                             system_prompt = """You are a RELEVANCE grader; providing the relevance of the given question to the given answer.
                                             Respond only as a number from 0 to 10 where 0 is the least relevant and 10 is the most relevant. 
                                         
@@ -120,7 +68,7 @@ if uploaded_file:
                                             - Answer that is RELEVANT to the entire question should get a score of 9 or 10. Higher score indicates more RELEVANCE.
                                             - Answer must be relevant and helpful for answering the entire question to get a score of 10.
                                             - Never elaborate."""
-                      else:
+                        else:
                             system_prompt = """You are a FACTUAL ACCURACY grader; evaluating the factual correctness of the given answer based on the question and context.  
                                                 Respond only as a number from 0 to 10 where 0 indicates completely factually inaccurate and 10 indicates completely factually accurate.  
                                                 
@@ -133,45 +81,24 @@ if uploaded_file:
                                                 - The answer must strictly avoid fabrications or contradictions to achieve a score of 10.  
                                                 - Never elaborate."""
 
-                      st.text_area(
-                        f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=200
+                        st.text_area(
+                            f"Generated System Prompt for Metric {i + 1}:",
+                            value=system_prompt,
+                            height=200
                         )
-                      st.success(f"System Prompt for Metric {i + 1} is hardcoded as 'huhu'.")
-
                     else:
                         system_prompt = st.text_area(
                             f"Enter the System Prompt for Metric {i + 1}:",
                             height=200
                         )
 
-                        valid_prompt = st.button(f"Validate Metric {i + 1}", key=f"validate_{i}")
-
-                        if valid_prompt:
-                            selected_column_terms = {
-                                col.lower().replace(" ", "_"): col
-                                for col in selected_columns
-                            }
-                            errors = []
-                            for term, original_column in selected_column_terms.items():
-                                term_pattern = f"\\b{term.replace('_', ' ')}\\b"
-                                if not re.search(term_pattern, system_prompt, re.IGNORECASE):
-                                    errors.append(f"'{original_column}' needs to be included as '{term.replace('_', ' ')}' in the system prompt.")
-
-                            if errors:
-                                st.error(
-                                    f"For Metric {i + 1}, the following errors were found in your system prompt: "
-                                    f"{'; '.join(errors)}"
-                                )
-                            else:
-                                st.success(f"System Prompt for Metric {i + 1} is valid.")
-
                     if st.button(f"Metric {i + 1} Results", key=f"generate_results_{i}"):
                         column_mapping = {
                             "Question": "question",
-                            "Context": "formatted_context",
-                            "Answer": "formatted_history",
-                            "Reference Context": "formatted_reference_context",
-                            "Reference Answer": "formatted_reference_answer"
+                            "Context": "context",
+                            "Answer": "answer",
+                            "Reference Context": "reference_context",
+                            "Reference Answer": "reference_answer"
                         }
                         results = []
                         for index, row in df.iterrows():
@@ -180,21 +107,74 @@ if uploaded_file:
                                 if col in column_mapping:
                                     params[column_mapping[col]] = row[col]
 
-                            score, details = prompt_with_conversation_relevence_custom.prompt_with_conversation_relevence_feedback(**params)
-                            result_row = {
-                                "Index": row["Index"],
-                                "Metric": f"Metric {i + 1}",
-                                "Selected Columns": ", ".join(selected_columns),
-                                "Score": score,
-                                "Criteria": details["criteria"],
-                                "Supporting Evidence": details["supporting_evidence"],
-                                "Question": row["Question"],
-                                "Context": row["Context"],
-                                "Answer": row["Answer"],
-                                "Reference Context": row["Reference Context"],
-                                "Reference Answer": row["Reference Answer"]
-                            }
-                            results.append(result_row)
+                            try:
+                                # Constructing the evaluation prompt with system prompt and column values
+                                                                # Constructing the evaluation prompt with system prompt and column values
+                                evaluation_prompt = f"""
+                                {system_prompt}
+
+                                Below is the data for evaluation:
+                                {''.join([f'{col}: {row[col]}\n' for col in selected_columns])}
+
+                                Based on the provided data, evaluate the following in this exact format:
+                                1. Criteria: [Provide a detailed explanation of how the evaluation is derived.]
+                                2. Supporting Evidence: [Provide specific examples from the data supporting the evaluation.]
+                                3. Score: [Provide a numerical or qualitative score.]
+
+                                Ensure the response strictly follows this format with numbered headings.
+                                """
+
+                                response = openai.chat.completions.create(
+                                    model="gpt-4o",
+                                    messages=[
+                                        {"role": "system", "content": "You are an evaluator analyzing the provided data."},
+                                        {"role": "user", "content": evaluation_prompt}
+                                    ]
+                                )
+                                response_content = response.choices[0].message.content.strip()
+                                st.write(response_content)
+
+                                # Parsing the GPT response for Criteria, Supporting Evidence, and Score
+                                criteria_match = re.search(r"1\.\s*Criteria:\s*(.*?)(?=\n2\.)", response_content, re.S)
+                                evidence_match = re.search(r"2\.\s*Supporting Evidence:\s*(.*?)(?=\n3\.)", response_content, re.S)
+                                score_match = re.search(r"3\.\s*Score:\s*(.*)", response_content)
+
+                                criteria = criteria_match.group(1).strip() if criteria_match else "Not available"
+                                evidence = evidence_match.group(1).strip() if evidence_match else "Not available"
+                                score = score_match.group(1).strip() if score_match else "Not available"
+
+
+
+                                result_row = {
+                                    "Index": row["Index"],
+                                    "Metric": f"Metric {i + 1}",
+                                    "Selected Columns": ", ".join(selected_columns),
+                                    "Score": score,
+                                    "Criteria": criteria,
+                                    "Supporting Evidence": evidence,
+                                    "Question": row["Question"],
+                                    "Context": row["Context"],
+                                    "Answer": row["Answer"],
+                                    "Reference Context": row["Reference Context"],
+                                    "Reference Answer": row["Reference Answer"]
+                                }
+                                results.append(result_row)
+                            except Exception as e:
+                                results.append({
+                                    "Index": row["Index"],
+                                    "Metric": f"Metric {i + 1}",
+                                    "Selected Columns": ", ".join(selected_columns),
+                                    "Score": "Error",
+                                    "Criteria": "Error",
+                                    "Supporting Evidence": "Error",
+                                    "Question": row["Question"],
+                                    "Context": row["Context"],
+                                    "Answer": row["Answer"],
+                                    "Reference Context": row["Reference Context"],
+                                    "Reference Answer": row["Reference Answer"],
+                                    "Error": str(e)
+                                })
+
                         st.session_state.combined_results.extend(results)
                         st.write(f"Results for Metric {i + 1}:")
                         st.dataframe(pd.DataFrame(results))
@@ -358,7 +338,7 @@ if uploaded_file:
                       st.text_area(
                         f"Generated System Prompt for Metric {i + 1}:", value=system_prompt, height=200
                         )
-                      st.success(f"System Prompt for Metric {i + 1} is hardcoded as 'huhu'.")
+                      st.success(f"System Prompt for Metric {i + 1} is Generated")
 
                     else:
                         system_prompt = st.text_area(
@@ -390,7 +370,8 @@ if uploaded_file:
                             st.warning("No results to combine. Please generate results for individual metrics first.")
                     except Exception as e:
                         st.error(f"Error displaying combined results: {e}")
-                        
 
+
+    
     except Exception as e:
-        st.error(f"Error displaying combined results: {e}")
+        st.error(f"Error processing the uploaded file: {e}")
